@@ -2,8 +2,10 @@ import { betterAuth } from "better-auth";
 import { MongoClient } from "mongodb";
 import { mongodbAdapter } from "@better-auth/mongo-adapter";
 
-const uri = process.env.MONGODB_URI as string;
+// Fallback to local MongoDB URI during static build if env var is not set yet in deployment settings
+const uri = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/fixmate-db";
 const dbName = process.env.MONGODB_DBNAME || "fixmate-db";
+const secret = process.env.BETTER_AUTH_SECRET || "fixmate-temporary-build-secret-key-minimum-32-chars";
 
 const client = new MongoClient(uri, {
   serverSelectionTimeoutMS: 5000,
@@ -17,7 +19,7 @@ const trustedOrigins = process.env.BETTER_AUTH_TRUSTED_ORIGINS
 
 export const auth = betterAuth({
   baseURL: process.env.BETTER_AUTH_URL || "http://localhost:3000",
-  secret: process.env.BETTER_AUTH_SECRET,
+  secret,
   trustedOrigins,
   database: mongodbAdapter(db, {
     client,

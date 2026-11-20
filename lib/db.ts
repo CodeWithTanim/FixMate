@@ -1,6 +1,7 @@
 import { MongoClient, Db } from "mongodb";
 
-const uri = process.env.MONGODB_URI;
+// Fallback to local MongoDB URI during static build if env var is not set yet in deployment settings
+const uri = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/fixmate-db";
 const dbName = process.env.MONGODB_DBNAME || "fixmate-db";
 
 let client: MongoClient;
@@ -8,10 +9,6 @@ let clientPromise: Promise<MongoClient>;
 
 declare global {
   var _mongoClientPromise: Promise<MongoClient> | undefined;
-}
-
-if (!uri) {
-  throw new Error("Please add your MONGODB_URI to .env");
 }
 
 if (process.env.NODE_ENV === "development") {
@@ -39,6 +36,9 @@ if (process.env.NODE_ENV === "development") {
 export default clientPromise;
 
 export async function getDatabase(): Promise<Db> {
+  if (!process.env.MONGODB_URI) {
+    throw new Error("MONGODB_URI environment variable is required");
+  }
   const connectedClient = await clientPromise;
   return connectedClient.db(dbName);
 }
