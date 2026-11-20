@@ -9,6 +9,9 @@ import {
   Calendar,
   Wrench,
   ArrowRight,
+  FileText,
+  Printer,
+  X,
 } from "lucide-react";
 import { apiClient } from "@/lib/api/client";
 import toast from "react-hot-toast";
@@ -29,6 +32,7 @@ interface CustomerPayment {
 
 export default function CustomerPaymentsPage() {
   const [payments, setPayments] = useState<CustomerPayment[]>([]);
+  const [selectedReceipt, setSelectedReceipt] = useState<CustomerPayment | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -137,15 +141,95 @@ export default function CustomerPaymentsPage() {
                   </div>
                 </div>
 
-                <div className="text-left sm:text-right self-end sm:self-center">
-                  <div className="text-[10px] uppercase font-bold text-[#526564]">Amount Paid</div>
-                  <div className="text-xl font-black text-emerald-700">
-                    ${p.amount.toFixed(2)} <span className="text-xs font-semibold text-[#526564]">{p.currency.toUpperCase()}</span>
+                <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between w-full sm:w-auto gap-3">
+                  <div className="text-left sm:text-right">
+                    <div className="text-[10px] uppercase font-bold text-[#526564]">Amount Paid</div>
+                    <div className="text-xl font-black text-emerald-700">
+                      ${p.amount.toFixed(2)} <span className="text-xs font-semibold text-[#526564]">{p.currency.toUpperCase()}</span>
+                    </div>
                   </div>
+
+                  <button
+                    onClick={() => setSelectedReceipt(p)}
+                    className="inline-flex items-center gap-1 rounded-xl border border-[#DCE5DF] bg-[#F6F5EF] px-3 py-1.5 text-xs font-bold text-[#152C2B] hover:bg-[#DCE5DF] transition cursor-pointer"
+                  >
+                    <FileText className="h-3.5 w-3.5 text-[#18756B]" />
+                    <span>Receipt</span>
+                  </button>
                 </div>
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Printable Receipt Modal */}
+      {selectedReceipt && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
+          <div className="relative w-full max-w-md rounded-3xl border border-[#DCE5DF] bg-white p-6 sm:p-8 shadow-2xl space-y-6">
+            <div className="flex items-start justify-between border-b border-[#DCE5DF] pb-4">
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#18756B]">
+                  Official Settlement Receipt
+                </span>
+                <h3 className="text-lg font-black text-[#152C2B]">FixMate Repair Invoice</h3>
+              </div>
+              <button
+                onClick={() => setSelectedReceipt(null)}
+                className="p-1 rounded-lg text-[#526564] hover:bg-[#F6F5EF]"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4 text-xs">
+              <div className="flex justify-between py-2 border-b border-[#DCE5DF]/60">
+                <span className="text-[#526564]">Service Performed:</span>
+                <strong className="text-[#152C2B] text-right">{selectedReceipt.serviceTitle}</strong>
+              </div>
+              <div className="flex justify-between py-2 border-b border-[#DCE5DF]/60">
+                <span className="text-[#526564]">Assigned Technician:</span>
+                <span className="font-semibold text-[#152C2B]">{selectedReceipt.technicianName}</span>
+              </div>
+              <div className="flex justify-between py-2 border-b border-[#DCE5DF]/60">
+                <span className="text-[#526564]">Settlement Date:</span>
+                <span>{new Date(selectedReceipt.createdAt).toLocaleString("en-US")}</span>
+              </div>
+              <div className="flex justify-between py-2 border-b border-[#DCE5DF]/60">
+                <span className="text-[#526564]">Payment Provider:</span>
+                <span className="font-semibold text-[#18756B]">Stripe Test Gateway</span>
+              </div>
+              <div className="flex justify-between py-2 border-b border-[#DCE5DF]/60">
+                <span className="text-[#526564]">Transaction Ref:</span>
+                <span className="font-mono text-[10px] text-[#152C2B] truncate max-w-[200px]">
+                  {selectedReceipt.stripePaymentIntentId || selectedReceipt.stripeSessionId}
+                </span>
+              </div>
+
+              <div className="pt-2 flex justify-between items-center text-sm font-black text-[#152C2B] bg-[#F6F5EF] p-3 rounded-xl border border-[#DCE5DF]">
+                <span>Total Amount Paid:</span>
+                <span className="text-base text-emerald-700">
+                  ${selectedReceipt.amount.toFixed(2)} {selectedReceipt.currency.toUpperCase()}
+                </span>
+              </div>
+            </div>
+
+            <div className="pt-2 flex gap-3">
+              <button
+                onClick={() => window.print()}
+                className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-[#0B3638] px-4 py-2.5 text-xs font-bold text-white hover:bg-[#152C2B] transition"
+              >
+                <Printer className="h-4 w-4" />
+                <span>Print Receipt</span>
+              </button>
+              <button
+                onClick={() => setSelectedReceipt(null)}
+                className="rounded-xl border border-[#DCE5DF] bg-[#F6F5EF] px-5 py-2.5 text-xs font-bold text-[#526564] hover:bg-[#DCE5DF]"
+              >
+                Close
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
