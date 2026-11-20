@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import toast from "react-hot-toast";
 import { Wrench, Plus, Eye, EyeOff, Trash2, Edit3, Loader2 } from "lucide-react";
@@ -18,23 +18,27 @@ export default function MyServicesPage() {
   const [saving, setSaving] = useState(false);
   const [deletingService, setDeletingService] = useState<{ id: string; title: string } | null>(null);
   const [deleting, setDeleting] = useState(false);
-
-  const loadServices = useCallback(async () => {
-    setLoading(true);
-    const res = await apiRequest<{ data: ServiceItem[] }>("/api/services-my");
-    setLoading(false);
-
-    if (res.error) {
-      toast.error(res.error);
-      return;
-    }
-
-    setServices(res.data?.data || []);
-  }, []);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
+    let active = true;
+    const loadServices = async () => {
+      const res = await apiRequest<{ data: ServiceItem[] }>("/api/services-my");
+      if (active) {
+        setLoading(false);
+        if (res.error) {
+          toast.error(res.error);
+          return;
+        }
+        setServices(res.data?.data || []);
+      }
+    };
+
     loadServices();
-  }, [loadServices]);
+    return () => {
+      active = false;
+    };
+  }, [refreshKey]);
 
   const handleToggleAvailability = async (id: string, current: boolean) => {
     const nextVal = !current;
@@ -109,7 +113,7 @@ export default function MyServicesPage() {
 
     toast.success("Service updated! Reset to pending approval.", { id: toastId });
     setEditingService(null);
-    loadServices();
+    setRefreshKey((k) => k + 1);
   };
 
   return (

@@ -39,27 +39,36 @@ export default function ProfilePage() {
   const [bio, setBio] = useState("");
   const [image, setImage] = useState("");
 
-  const fetchProfile = async () => {
-    try {
-      setLoading(true);
-      const res = await apiClient.get<{ user: UserProfile }>("/api/me");
-      const u = res.user;
-      setProfile(u);
-      setName(u.name || "");
-      setPhone(u.phone || "");
-      setServiceArea(u.serviceArea || "");
-      setBio(u.bio || "");
-      setImage(u.image || "");
-    } catch (err: unknown) {
-      const error = err as { message?: string };
-      toast.error(error.message || "Failed to load profile");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
+    let active = true;
+    const fetchProfile = async () => {
+      try {
+        const res = await apiClient.get<{ user: UserProfile }>("/api/me");
+        if (active) {
+          const u = res.user;
+          setProfile(u);
+          setName(u.name || "");
+          setPhone(u.phone || "");
+          setServiceArea(u.serviceArea || "");
+          setBio(u.bio || "");
+          setImage(u.image || "");
+        }
+      } catch (err: unknown) {
+        if (active) {
+          const error = err as { message?: string };
+          toast.error(error.message || "Failed to load profile");
+        }
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
+      }
+    };
+
     fetchProfile();
+    return () => {
+      active = false;
+    };
   }, []);
 
   const handleImageFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {

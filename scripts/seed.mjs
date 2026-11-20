@@ -1,4 +1,4 @@
-import { MongoClient, ObjectId } from "mongodb";
+import { MongoClient } from "mongodb";
 import { hashPassword } from "better-auth/crypto";
 
 // Load .env if present
@@ -11,7 +11,7 @@ try {
 const uri = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/fixmate-db";
 const dbName = process.env.MONGODB_DBNAME || "fixmate-db";
 
-const DEMO_PASSWORD_RAW = "FixMate2026!";
+const DEMO_PASSWORD_RAW = process.env.DEMO_USER_PASSWORD || "FixMate2026!";
 
 async function runSeed() {
   console.log("Connecting to database at", dbName);
@@ -88,10 +88,10 @@ async function runSeed() {
       const res = await usersCol.insertOne(doc);
       userIds[u.email] = res.insertedId.toString();
 
-      // Better auth account link
+      // Better auth account link (Better Auth requires userId as ObjectId and accountId as userId string)
       await accountsCol.insertOne({
-        userId: res.insertedId.toString(),
-        accountId: u.email,
+        userId: res.insertedId,
+        accountId: res.insertedId.toString(),
         providerId: "credential",
         password: hashedPassword,
         createdAt: new Date(),
@@ -100,7 +100,7 @@ async function runSeed() {
       console.log(`Created demo user: ${u.email} (${u.role})`);
     } else {
       userIds[u.email] = existing._id.toString();
-      // Ensure role is preserved
+      // Ensure profile metadata is maintained
       await usersCol.updateOne(
         { email: u.email },
         {
@@ -113,18 +113,33 @@ async function runSeed() {
           },
         }
       );
-      // Ensure account password is set to DEMO_PASSWORD_RAW hash
-      await accountsCol.updateOne(
-        { accountId: u.email },
-        {
-          $set: {
-            password: hashedPassword,
-            updatedAt: new Date(),
-          },
-        },
-        { upsert: true }
-      );
-      console.log(`Updated existing demo user: ${u.email} (${u.role})`);
+      // Ensure account link exists with ObjectId userId, but DO NOT overwrite existing password
+      const existingAccount = await accountsCol.findOne({
+        $or: [{ userId: existing._id }, { accountId: existing._id.toString() }],
+      });
+      if (!existingAccount) {
+        await accountsCol.insertOne({
+          userId: existing._id,
+          accountId: existing._id.toString(),
+          providerId: "credential",
+          password: hashedPassword,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+      } else {
+        await accountsCol.updateOne(
+          { _id: existingAccount._id },
+          {
+            $set: {
+              userId: existing._id,
+              accountId: existing._id.toString(),
+              providerId: "credential",
+              updatedAt: new Date(),
+            },
+          }
+        );
+      }
+      console.log(`Preserved existing credentials and updated metadata: ${u.email} (${u.role})`);
     }
   }
 

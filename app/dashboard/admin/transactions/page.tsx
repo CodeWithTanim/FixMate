@@ -36,26 +36,35 @@ export default function AdminTransactionsPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
-  const fetchPayments = async () => {
-    try {
-      setLoading(true);
-      const res = await apiClient.get<{
-        data: Transaction[];
-        totalRevenue: number;
-        total: number;
-      }>("/api/admin/payments");
-      setPayments(res.data || []);
-      setTotalRevenue(res.totalRevenue || 0);
-    } catch (err: unknown) {
-      const error = err as { message?: string };
-      toast.error(error.message || "Failed to load transactions ledger");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
+    let active = true;
+    const fetchPayments = async () => {
+      try {
+        const res = await apiClient.get<{
+          data: Transaction[];
+          totalRevenue: number;
+          total: number;
+        }>("/api/admin/payments");
+        if (active) {
+          setPayments(res.data || []);
+          setTotalRevenue(res.totalRevenue || 0);
+        }
+      } catch (err: unknown) {
+        if (active) {
+          const error = err as { message?: string };
+          toast.error(error.message || "Failed to load transactions ledger");
+        }
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
+      }
+    };
+
     fetchPayments();
+    return () => {
+      active = false;
+    };
   }, []);
 
   const filteredPayments = payments.filter((p) => {

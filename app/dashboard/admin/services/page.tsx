@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { CheckCircle2, XCircle, Clock, Loader2, ShieldCheck, Tag } from "lucide-react";
 import { apiRequest } from "@/lib/api/client";
@@ -11,23 +11,26 @@ export default function AdminServicesPage() {
   const [filter, setFilter] = useState<"all" | "pending" | "approved" | "rejected">("pending");
   const [loading, setLoading] = useState(true);
 
-  const loadServices = useCallback(async () => {
-    setLoading(true);
-    const query = filter !== "all" ? `?status=${filter}` : "";
-    const res = await apiRequest<{ data: ServiceItem[] }>(`/api/admin/services${query}`);
-    setLoading(false);
-
-    if (res.error) {
-      toast.error(res.error);
-      return;
-    }
-
-    setServices(res.data?.data || []);
-  }, [filter]);
-
   useEffect(() => {
+    let active = true;
+    const loadServices = async () => {
+      const query = filter !== "all" ? `?status=${filter}` : "";
+      const res = await apiRequest<{ data: ServiceItem[] }>(`/api/admin/services${query}`);
+      if (active) {
+        setLoading(false);
+        if (res.error) {
+          toast.error(res.error);
+          return;
+        }
+        setServices(res.data?.data || []);
+      }
+    };
+
     loadServices();
-  }, [loadServices]);
+    return () => {
+      active = false;
+    };
+  }, [filter]);
 
   const handleUpdateApproval = async (id: string, status: "approved" | "rejected") => {
     const toastId = toast.loading(`Updating service to ${status}...`);

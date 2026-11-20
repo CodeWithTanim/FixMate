@@ -34,25 +34,34 @@ export default function AdminUsersPage() {
   const [roleFilter, setRoleFilter] = useState("all");
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
-  const fetchUsers = async () => {
-    try {
-      setLoading(true);
-      const [usersRes, meRes] = await Promise.all([
-        apiClient.get<{ data: PlatformUser[] }>("/api/admin/users"),
-        apiClient.get<{ user: { email: string } }>("/api/me"),
-      ]);
-      setUsers(usersRes.data || []);
-      setCurrentUserEmail(meRes.user.email);
-    } catch (err: unknown) {
-      const error = err as { message?: string };
-      toast.error(error.message || "Failed to load platform users");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
+    let active = true;
+    const fetchUsers = async () => {
+      try {
+        const [usersRes, meRes] = await Promise.all([
+          apiClient.get<{ data: PlatformUser[] }>("/api/admin/users"),
+          apiClient.get<{ user: { email: string } }>("/api/me"),
+        ]);
+        if (active) {
+          setUsers(usersRes.data || []);
+          setCurrentUserEmail(meRes.user.email);
+        }
+      } catch (err: unknown) {
+        if (active) {
+          const error = err as { message?: string };
+          toast.error(error.message || "Failed to load platform users");
+        }
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
+      }
+    };
+
     fetchUsers();
+    return () => {
+      active = false;
+    };
   }, []);
 
   const handleRoleChange = async (userId: string, newRole: string) => {

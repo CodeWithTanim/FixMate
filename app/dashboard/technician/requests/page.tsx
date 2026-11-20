@@ -57,23 +57,33 @@ export default function TechnicianRequestsPage() {
 
   // Timeline modal state
   const [timelineBooking, setTimelineBooking] = useState<BookingRequest | null>(null);
-
-  const fetchRequests = async () => {
-    try {
-      setLoading(true);
-      const res = await apiClient.get<{ data: BookingRequest[] }>("/api/bookings/technician");
-      setRequests(res.data || []);
-    } catch (err: unknown) {
-      const error = err as { message?: string };
-      toast.error(error.message || "Failed to load requests");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
+    let active = true;
+    const fetchRequests = async () => {
+      try {
+        const res = await apiClient.get<{ data: BookingRequest[] }>("/api/bookings/technician");
+        if (active) {
+          setRequests(res.data || []);
+        }
+      } catch (err: unknown) {
+        if (active) {
+          const error = err as { message?: string };
+          toast.error(error.message || "Failed to load requests");
+        }
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
+      }
+    };
+
     fetchRequests();
-  }, []);
+    return () => {
+      active = false;
+    };
+  }, [refreshKey]);
 
   const handleUpdateStatus = async (
     bookingId: string,
@@ -94,7 +104,7 @@ export default function TechnicianRequestsPage() {
       setCompletingBooking(null);
       setCompletionAmount("");
       setCompletionNote("");
-      fetchRequests();
+      setRefreshKey((k) => k + 1);
     } catch (err: unknown) {
       const error = err as { message?: string };
       toast.error(error.message || "Failed to update status");

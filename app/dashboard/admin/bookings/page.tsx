@@ -42,21 +42,26 @@ export default function AdminBookingsPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [timelineBooking, setTimelineBooking] = useState<AdminBooking | null>(null);
 
-  const fetchBookings = async () => {
-    try {
-      setLoading(true);
-      const res = await apiClient.get<{ data: AdminBooking[] }>("/api/admin/bookings");
-      setBookings(res.data || []);
-    } catch (err: unknown) {
-      const error = err as { message?: string };
-      toast.error(error.message || "Failed to load platform bookings");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
+    let active = true;
+    const fetchBookings = async () => {
+      try {
+        const res = await apiClient.get<{ data: AdminBooking[] }>("/api/admin/bookings");
+        if (active) setBookings(res.data || []);
+      } catch (err: unknown) {
+        if (active) {
+          const error = err as { message?: string };
+          toast.error(error.message || "Failed to load platform bookings");
+        }
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+
     fetchBookings();
+    return () => {
+      active = false;
+    };
   }, []);
 
   const filteredBookings = bookings.filter((b) => {

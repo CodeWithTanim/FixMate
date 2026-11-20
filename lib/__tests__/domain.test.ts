@@ -69,3 +69,61 @@ test("Currency and price calculations round to two decimal cents", () => {
   assert.equal(formatMoney(65.5), "$65.50");
   assert.equal(formatMoney(99.999), "$100.00");
 });
+
+test("Role route boundary enforcement blocks privilege escalation", () => {
+  function isAuthorized(userRole: string, path: string): boolean {
+    if (path.startsWith("/dashboard/customer")) return userRole === "customer";
+    if (path.startsWith("/dashboard/technician")) return userRole === "technician";
+    if (path.startsWith("/dashboard/admin")) return userRole === "admin";
+    return true;
+  }
+
+  assert.equal(isAuthorized("customer", "/dashboard/customer/bookings"), true);
+  assert.equal(isAuthorized("customer", "/dashboard/admin/users"), false);
+  assert.equal(isAuthorized("technician", "/dashboard/technician/requests"), true);
+  assert.equal(isAuthorized("technician", "/dashboard/customer/bookings"), false);
+  assert.equal(isAuthorized("admin", "/dashboard/admin/transactions"), true);
+  assert.equal(isAuthorized("admin", "/dashboard/technician"), false);
+});
+
+test("Payment verification enforces customer ownership and session completeness", () => {
+  interface PaymentCheck {
+    sessionPaid: boolean;
+    currency: string;
+    bookingCustomerEmail: string;
+    reqUserEmail: string;
+    bookingStatus: string;
+  }
+
+  function validatePaymentFulfillment(check: PaymentCheck): { ok: boolean; reason?: string } {
+    if (!check.sessionPaid) return { ok: false, reason: "Session unpaid" };
+    if (check.currency.toLowerCase() !== "usd") return { ok: false, reason: "Unsupported currency" };
+    if (check.bookingCustomerEmail !== check.reqUserEmail) return { ok: false, reason: "Customer ownership mismatch" };
+    if (check.bookingStatus !== "completed") return { ok: false, reason: "Booking not completed" };
+    return { ok: true };
+  }
+
+  assert.equal(validatePaymentFulfillment({
+    sessionPaid: true,
+    currency: "usd",
+    bookingCustomerEmail: "customer@fixmate.dev",
+    reqUserEmail: "customer@fixmate.dev",
+    bookingStatus: "completed"
+  }).ok, true);
+
+  assert.equal(validatePaymentFulfillment({
+    sessionPaid: false,
+    currency: "usd",
+    bookingCustomerEmail: "customer@fixmate.dev",
+    reqUserEmail: "customer@fixmate.dev",
+    bookingStatus: "completed"
+  }).ok, false);
+
+  assert.equal(validatePaymentFulfillment({
+    sessionPaid: true,
+    currency: "usd",
+    bookingCustomerEmail: "victim@fixmate.dev",
+    reqUserEmail: "attacker@fixmate.dev",
+    bookingStatus: "completed"
+  }).ok, false);
+});

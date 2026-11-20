@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Wrench, ArrowLeft, Search, Home } from "lucide-react";
+import { Wrench, Search, Home } from "lucide-react";
 
 export default function NotFound() {
   return (

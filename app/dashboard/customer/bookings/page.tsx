@@ -5,7 +5,6 @@ import Link from "next/link";
 import {
   Calendar,
   Clock,
-  DollarSign,
   User,
   MapPin,
   AlertCircle,
@@ -49,6 +48,7 @@ export default function CustomerBookingsPage() {
   const [cancellingBooking, setCancellingBooking] = useState<Booking | null>(null);
   const [cancelReason, setCancelReason] = useState("");
   const [cancelling, setCancelling] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   // Timeline modal state
   const [timelineBooking, setTimelineBooking] = useState<Booking | null>(null);
@@ -56,22 +56,31 @@ export default function CustomerBookingsPage() {
   // Payment loading state per booking ID
   const [payingBookingId, setPayingBookingId] = useState<string | null>(null);
 
-  const fetchBookings = async () => {
-    try {
-      setLoading(true);
-      const res = await apiClient.get<{ data: Booking[] }>("/api/bookings/my");
-      setBookings(res.data || []);
-    } catch (err: unknown) {
-      const error = err as { message?: string };
-      toast.error(error.message || "Failed to load bookings");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
+    let active = true;
+    const fetchBookings = async () => {
+      try {
+        const res = await apiClient.get<{ data: Booking[] }>("/api/bookings/my");
+        if (active) {
+          setBookings(res.data || []);
+        }
+      } catch (err: unknown) {
+        if (active) {
+          const error = err as { message?: string };
+          toast.error(error.message || "Failed to load bookings");
+        }
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
+      }
+    };
+
     fetchBookings();
-  }, []);
+    return () => {
+      active = false;
+    };
+  }, [refreshKey]);
 
   const handleCancelBooking = async () => {
     if (!cancellingBooking) return;
@@ -85,7 +94,7 @@ export default function CustomerBookingsPage() {
       toast.success("Booking request cancelled successfully");
       setCancellingBooking(null);
       setCancelReason("");
-      fetchBookings();
+      setRefreshKey((k) => k + 1);
     } catch (err: unknown) {
       const error = err as { message?: string };
       toast.error(error.message || "Failed to cancel booking");
@@ -105,7 +114,7 @@ export default function CustomerBookingsPage() {
       );
 
       if (res.url) {
-        window.location.href = res.url;
+        window.location.assign(res.url);
       } else {
         toast.error("Unable to initialize checkout session");
       }
