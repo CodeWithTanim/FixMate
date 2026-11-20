@@ -1,47 +1,232 @@
-import { FileText, Clock, CheckCircle } from "lucide-react";
-import { requireRole } from "@/lib/auth-guards";
+"use client";
 
-export default async function CustomerDashboard() {
-  await requireRole(["customer"]);
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import {
+  FileText,
+  Clock,
+  CheckCircle,
+  DollarSign,
+  ArrowRight,
+  CalendarCheck,
+  Search,
+} from "lucide-react";
+import { apiClient } from "@/lib/api/client";
 
-  const stats = [
-    { label: "Total Requests", value: "0", icon: FileText, desc: "All repair bookings" },
-    { label: "Active Jobs", value: "0", icon: Clock, desc: "In-progress repairs" },
-    { label: "Completed Jobs", value: "0", icon: CheckCircle, desc: "Successfully resolved" },
+interface CustomerStats {
+  totalBookings: number;
+  activeBookings: number;
+  completedBookings: number;
+  totalSpent: number;
+  recentBookings: Array<{
+    id: string;
+    serviceTitle: string;
+    technicianName: string;
+    status: string;
+    paymentStatus: string;
+    finalAmount: number;
+    createdAt: string;
+  }>;
+}
+
+export default function CustomerDashboard() {
+  const [stats, setStats] = useState<CustomerStats | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadStats() {
+      try {
+        const res = await apiClient.get<{ stats: CustomerStats }>("/api/stats/customer");
+        setStats(res.stats);
+      } catch (err) {
+        console.error("Failed to load customer statistics:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadStats();
+  }, []);
+
+  const statCards = [
+    {
+      label: "Total Bookings",
+      value: stats ? stats.totalBookings : 0,
+      icon: FileText,
+      desc: "All lifetime repairs requested",
+      color: "text-[#18756B] bg-[#18756B]/10",
+    },
+    {
+      label: "Active Repairs",
+      value: stats ? stats.activeBookings : 0,
+      icon: Clock,
+      desc: "Jobs currently being processed",
+      color: "text-amber-700 bg-amber-50",
+    },
+    {
+      label: "Completed",
+      value: stats ? stats.completedBookings : 0,
+      icon: CheckCircle,
+      desc: "Successfully resolved repairs",
+      color: "text-emerald-700 bg-emerald-50",
+    },
+    {
+      label: "Total Spent",
+      value: `$${stats ? stats.totalSpent.toFixed(2) : "0.00"}`,
+      icon: DollarSign,
+      desc: "Completed & settled repair bills",
+      color: "text-[#0B3638] bg-[#0B3638]/10",
+    },
   ];
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900">Customer Dashboard</h1>
-        <p className="text-sm text-slate-500">
-          Track your repair requests, technician assignments, and job completion status.
-        </p>
+      {/* Title */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-black text-[#152C2B] tracking-tight">Customer Portal</h1>
+          <p className="text-xs text-[#526564] mt-0.5">
+            Overview of your active device repair requests, quotes, and payment history.
+          </p>
+        </div>
+        <Link
+          href="/services"
+          className="inline-flex items-center gap-2 rounded-xl bg-[#18756B] px-4 py-2.5 text-xs font-bold text-white hover:bg-[#135d55] transition shadow-xs self-start sm:self-auto"
+        >
+          <Search className="h-4 w-4" />
+          <span>Find a Technician</span>
+        </Link>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {stats.map((s) => {
+      {/* Real Stat Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {statCards.map((s) => {
           const Icon = s.icon;
           return (
-            <div key={s.label} className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
+            <div
+              key={s.label}
+              className="rounded-2xl border border-[#DCE5DF] bg-white p-5 shadow-2xs hover:shadow-xs transition"
+            >
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-slate-500">{s.label}</span>
-                <div className="rounded-lg bg-sky-50 p-2 text-sky-600">
+                <span className="text-xs font-bold text-[#526564]">{s.label}</span>
+                <div className={`rounded-xl p-2.5 ${s.color}`}>
                   <Icon className="h-4 w-4" />
                 </div>
               </div>
-              <div className="mt-2 text-3xl font-extrabold text-slate-900">{s.value}</div>
-              <p className="mt-1 text-xs text-slate-400">{s.desc}</p>
+              <div className="mt-3 text-2xl font-black text-[#152C2B]">
+                {loading ? <span className="text-slate-300">...</span> : s.value}
+              </div>
+              <p className="mt-1 text-[11px] text-[#526564]">{s.desc}</p>
             </div>
           );
         })}
       </div>
 
-      <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-xs">
-        <h2 className="text-base font-bold text-slate-900">Recent Repair Requests</h2>
-        <div className="mt-4 rounded-lg border border-dashed border-slate-200 p-8 text-center">
-          <p className="text-sm text-slate-500">No repair requests placed yet.</p>
-          <p className="text-xs text-slate-400 mt-1">Browse our verified repair services to book a repair.</p>
+      {/* Quick Actions & Recent Bookings */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left 2 cols: Recent Bookings */}
+        <div className="lg:col-span-2 rounded-2xl border border-[#DCE5DF] bg-white p-6 shadow-2xs">
+          <div className="flex items-center justify-between border-b border-[#DCE5DF] pb-4 mb-4">
+            <div>
+              <h2 className="text-base font-bold text-[#152C2B]">Recent Repair Requests</h2>
+              <p className="text-xs text-[#526564]">Latest updates on your pending and active jobs</p>
+            </div>
+            <Link
+              href="/dashboard/customer/bookings"
+              className="text-xs font-bold text-[#18756B] hover:underline flex items-center gap-1"
+            >
+              <span>View All</span>
+              <ArrowRight className="h-3 w-3" />
+            </Link>
+          </div>
+
+          {loading ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="h-14 rounded-xl bg-slate-50 animate-pulse" />
+              ))}
+            </div>
+          ) : !stats || stats.recentBookings.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-[#DCE5DF] p-8 text-center bg-[#F6F5EF]/50">
+              <CalendarCheck className="mx-auto h-8 w-8 text-[#526564]/40 mb-2" />
+              <p className="text-xs font-bold text-[#152C2B]">No active bookings yet</p>
+              <p className="text-[11px] text-[#526564] mt-0.5">
+                Ready for a fix? Browse vetted local technicians to schedule your repair.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {stats.recentBookings.map((b) => (
+                <div
+                  key={b.id}
+                  className="flex items-center justify-between p-3.5 rounded-xl border border-[#DCE5DF]/60 bg-[#F6F5EF]/30 hover:bg-[#F6F5EF] transition"
+                >
+                  <div className="min-w-0 pr-2">
+                    <h3 className="text-xs font-bold text-[#152C2B] truncate">{b.serviceTitle}</h3>
+                    <p className="text-[10px] text-[#526564] truncate">
+                      Tech: {b.technicianName} • ${b.finalAmount}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span
+                      className={`inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${
+                        b.status === "completed"
+                          ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                          : b.status === "in-progress"
+                          ? "bg-indigo-50 text-indigo-700 border border-indigo-200"
+                          : "bg-amber-50 text-amber-800 border border-amber-200"
+                      }`}
+                    >
+                      {b.status}
+                    </span>
+                    <Link
+                      href="/dashboard/customer/bookings"
+                      className="p-1.5 rounded-lg border border-[#DCE5DF] bg-white text-[#526564] hover:text-[#152C2B]"
+                    >
+                      <ArrowRight className="h-3 w-3" />
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Right col: Safe Payment & Policy Callout */}
+        <div className="space-y-4">
+          <div className="rounded-2xl border border-[#DCE5DF] bg-[#0B3638] text-white p-6 shadow-2xs">
+            <h3 className="text-sm font-bold text-[#F4B740]">Pay-After-Completion Guarantee</h3>
+            <p className="text-xs text-white/80 mt-2 leading-relaxed">
+              You never pay upfront. Technicians only submit invoices after the repair is completed to your satisfaction. All payments are securely processed with Stripe test-mode encryption.
+            </p>
+            <div className="mt-4 pt-4 border-t border-white/10 flex items-center justify-between text-xs text-white/60">
+              <span>Card / Online Checkout</span>
+              <span className="font-bold text-white">Zero Deposit</span>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-[#DCE5DF] bg-white p-6 shadow-2xs space-y-3">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-[#526564]">Customer Actions</h3>
+            <div className="space-y-2">
+              <Link
+                href="/services"
+                className="block p-3 rounded-xl border border-[#DCE5DF] bg-[#F6F5EF] hover:bg-[#DCE5DF]/60 text-xs font-bold text-[#152C2B] transition"
+              >
+                Browse All 7 Service Categories
+              </Link>
+              <Link
+                href="/dashboard/customer/payments"
+                className="block p-3 rounded-xl border border-[#DCE5DF] bg-[#F6F5EF] hover:bg-[#DCE5DF]/60 text-xs font-bold text-[#152C2B] transition"
+              >
+                View Succeeded Payment Receipts
+              </Link>
+              <Link
+                href="/dashboard/profile"
+                className="block p-3 rounded-xl border border-[#DCE5DF] bg-[#F6F5EF] hover:bg-[#DCE5DF]/60 text-xs font-bold text-[#152C2B] transition"
+              >
+                Update Service Address & Phone
+              </Link>
+            </div>
+          </div>
         </div>
       </div>
     </div>
