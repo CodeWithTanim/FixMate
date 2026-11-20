@@ -3,8 +3,30 @@ import { Toaster } from "react-hot-toast";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "FixMate | Expert Device & Appliance Repair Services",
-  description: "Connect with certified local technicians for smartphone, PC, AC, and appliance repairs with transparent pricing and real-time tracking.",
+  title: {
+    default: "FixMate | Expert Device & Appliance Repair Services",
+    template: "%s | FixMate",
+  },
+  description:
+    "Connect with vetted local technicians for smartphone, laptop, AC, refrigerator, TV, and appliance repairs with transparent pricing and pay-after-completion protection.",
+  keywords: [
+    "device repair",
+    "smartphone repair",
+    "laptop repair",
+    "appliance service",
+    "AC repair",
+    "refrigerator repair",
+    "technician marketplace",
+  ],
+  authors: [{ name: "FixMate Engineering Team" }],
+  openGraph: {
+    title: "FixMate | Expert Device & Appliance Repair Services",
+    description:
+      "On-demand device and home appliance repairs with zero upfront risk. Settle invoice only after repair completion.",
+    type: "website",
+    locale: "en_US",
+    siteName: "FixMate",
+  },
 };
 
 export default function RootLayout({
