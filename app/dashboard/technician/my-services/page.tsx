@@ -16,6 +16,8 @@ export default function MyServicesPage() {
   const [editDuration, setEditDuration] = useState("");
   const [editArea, setEditArea] = useState("");
   const [saving, setSaving] = useState(false);
+  const [deletingService, setDeletingService] = useState<{ id: string; title: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const loadServices = useCallback(async () => {
     setLoading(true);
@@ -53,11 +55,14 @@ export default function MyServicesPage() {
     );
   };
 
-  const handleDelete = async (id: string, title: string) => {
-    if (!confirm(`Are you sure you want to delete "${title}"?`)) return;
+  const handleDeleteConfirmed = async () => {
+    if (!deletingService) return;
+    const { id } = deletingService;
 
-    const toastId = toast.loading("Deleting service...");
+    setDeleting(true);
+    const toastId = toast.loading("Removing service...");
     const res = await apiRequest(`/api/services/${id}`, { method: "DELETE" });
+    setDeleting(false);
 
     if (res.error) {
       toast.error(res.error, { id: toastId });
@@ -66,6 +71,7 @@ export default function MyServicesPage() {
 
     toast.success("Service deleted successfully", { id: toastId });
     setServices((prev) => prev.filter((s) => s.id !== id && s._id !== id));
+    setDeletingService(null);
   };
 
   const handleStartEdit = (service: ServiceItem) => {
@@ -216,9 +222,9 @@ export default function MyServicesPage() {
                       <Edit3 className="h-3.5 w-3.5" />
                     </button>
                     <button
-                      onClick={() => handleDelete(id, service.title)}
-                      className="rounded-lg border border-rose-200 p-1.5 text-rose-600 hover:bg-rose-50"
-                      title="Delete service"
+                      onClick={() => setDeletingService({ id, title: service.title })}
+                      className="rounded-lg border border-rose-200 p-1.5 text-rose-600 hover:bg-rose-50 cursor-pointer"
+                      title="Delete service listing"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
@@ -302,6 +308,45 @@ export default function MyServicesPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deletingService && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
+          <div className="relative w-full max-w-sm rounded-3xl border border-[#DCE5DF] bg-white p-6 shadow-2xl space-y-4">
+            <div className="flex items-center gap-3 text-rose-600">
+              <div className="p-2.5 rounded-full bg-rose-100">
+                <Trash2 className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-[#152C2B]">Delete Service Listing?</h3>
+                <p className="text-xs text-[#526564]">This action permanently removes the listing.</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-[#526564] bg-[#F6F5EF] p-3 rounded-xl border border-[#DCE5DF]/60 leading-relaxed">
+              Are you sure you want to remove <strong className="text-[#152C2B]">&quot;{deletingService.title}&quot;</strong>? Active customer bookings will retain their snapshots.
+            </p>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setDeletingService(null)}
+                className="rounded-xl border border-[#DCE5DF] px-4 py-2 text-xs font-bold text-[#526564] hover:bg-[#F6F5EF] cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteConfirmed}
+                disabled={deleting}
+                className="rounded-xl bg-rose-600 px-5 py-2 text-xs font-bold text-white hover:bg-rose-700 disabled:opacity-50 cursor-pointer"
+              >
+                {deleting ? "Deleting..." : "Confirm Delete"}
+              </button>
+            </div>
           </div>
         </div>
       )}
