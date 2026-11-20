@@ -72,3 +72,34 @@ export async function apiRequest<T = unknown>(
     return { error: msg, status: 503 };
   }
 }
+
+export const apiClient = {
+  get: async <T = unknown>(endpoint: string, options?: RequestInit): Promise<T> => {
+    const res = await apiRequest<T>(endpoint, { ...options, method: "GET" });
+    if (res.error) throw new Error(res.error);
+    return res.data as T;
+  },
+  post: async <T = unknown>(endpoint: string, body?: unknown, options?: RequestInit): Promise<T> => {
+    const res = await apiRequest<T>(endpoint, {
+      ...options,
+      method: "POST",
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    if (res.error) throw new Error(res.error);
+    return res.data as T;
+  },
+  patch: async <T = unknown>(endpoint: string, body?: unknown, options?: RequestInit): Promise<T> => {
+    const res = await apiRequest<T>(endpoint, {
+      ...options,
+      method: "PATCH",
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    if (res.error) throw new Error(res.error);
+    return res.data as T;
+  },
+  delete: async <T = unknown>(endpoint: string, options?: RequestInit): Promise<T> => {
+    const res = await apiRequest<T>(endpoint, { ...options, method: "DELETE" });
+    if (res.error) throw new Error(res.error);
+    return res.data as T;
+  },
+};
