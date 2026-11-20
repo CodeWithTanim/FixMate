@@ -1,11 +1,11 @@
 import Link from "next/link";
-import { Wrench, MapPin, Clock, ArrowRight, Tag } from "lucide-react";
+import { Wrench, MapPin, Clock, ArrowRight, Tag, Search, Filter } from "lucide-react";
 import { getPublicServices } from "@/lib/api/services";
 import type { ServiceCategory, ServiceItem } from "@/types";
 
 export const metadata = {
   title: "Browse Repair Services | FixMate",
-  description: "Find certified local technicians for smartphone, PC, AC, and appliance repairs.",
+  description: "Find certified local technicians for smartphone, PC, AC, and appliance repairs with transparent base rates.",
 };
 
 const CATEGORIES: ServiceCategory[] = [
@@ -19,41 +19,153 @@ const CATEGORIES: ServiceCategory[] = [
 ];
 
 export default async function ServicesPage(props: {
-  searchParams?: Promise<{ category?: string }>;
+  searchParams?: Promise<{
+    search?: string;
+    category?: string;
+    serviceMode?: string;
+    sort?: string;
+    page?: string;
+  }>;
 }) {
   const searchParams = await props.searchParams;
-  const activeCategory = searchParams?.category;
+  const search = searchParams?.search || "";
+  const category = searchParams?.category || "";
+  const serviceMode = searchParams?.serviceMode || "";
+  const sort = searchParams?.sort || "newest";
+  const page = parseInt(searchParams?.page || "1", 10) || 1;
 
-  const { data: services, total, error } = await getPublicServices({ limit: 50 });
+  const { data: services, total, totalPages, error } = await getPublicServices({
+    search,
+    category,
+    serviceMode,
+    sort,
+    page,
+    limit: 9,
+  });
 
-  const filteredServices = activeCategory
-    ? services.filter((s: ServiceItem) => s.category.toLowerCase() === activeCategory.toLowerCase())
-    : services;
+  // Helper to build URL with query params
+  function buildQueryUrl(overrides: Record<string, string | number | undefined>) {
+    const params = new URLSearchParams();
+    const merged = { search, category, serviceMode, sort, page: 1, ...overrides };
+
+    if (merged.search) params.set("search", String(merged.search));
+    if (merged.category && merged.category !== "All") params.set("category", String(merged.category));
+    if (merged.serviceMode && merged.serviceMode !== "All") params.set("serviceMode", String(merged.serviceMode));
+    if (merged.sort && merged.sort !== "newest") params.set("sort", String(merged.sort));
+    if (merged.page && Number(merged.page) > 1) params.set("page", String(merged.page));
+
+    const qs = params.toString();
+    return qs ? `/services?${qs}` : "/services";
+  }
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8 space-y-8">
       {/* Header */}
       <div className="space-y-2">
-        <div className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-sky-600">
+        <div className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-[#18756B]">
           <Wrench className="h-4 w-4" />
-          Certified Local Technicians
+          Verified Service Catalog
         </div>
-        <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">
+        <h1 className="text-3xl font-extrabold tracking-tight text-[#152C2B] sm:text-4xl">
           Browse Repair Services
         </h1>
-        <p className="text-sm text-slate-600">
-          Transparent base pricing and trusted service modes for home visits and shop drop-offs.
+        <p className="text-xs sm:text-sm text-[#526564]">
+          Transparent upfront base prices. Select home visit or shop drop-off, pay securely after completion.
         </p>
       </div>
 
-      {/* Category Filter Pills */}
-      <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 pb-4">
+      {/* Search & Filter Bar */}
+      <div className="rounded-2xl border border-[#DCE5DF] bg-white p-4 shadow-2xs space-y-4">
+        {/* Search Form */}
+        <form method="GET" action="/services" className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3.5 top-3 h-4 w-4 text-[#526564]" />
+            <input
+              type="text"
+              name="search"
+              defaultValue={search}
+              placeholder="Search by service title, issue, or keyword..."
+              className="w-full rounded-xl border border-[#DCE5DF] py-2.5 pl-10 pr-3 text-xs sm:text-sm text-[#152C2B] placeholder:text-[#526564]/60 focus:border-[#18756B] focus:outline-none focus:ring-1 focus:ring-[#18756B]"
+            />
+          </div>
+          {category && <input type="hidden" name="category" value={category} />}
+          {serviceMode && <input type="hidden" name="serviceMode" value={serviceMode} />}
+          {sort && <input type="hidden" name="sort" value={sort} />}
+          <button
+            type="submit"
+            className="rounded-xl bg-[#18756B] px-5 py-2.5 text-xs sm:text-sm font-bold text-white hover:bg-[#135d55] transition cursor-pointer"
+          >
+            Search
+          </button>
+          {(search || category || serviceMode || sort !== "newest") && (
+            <Link
+              href="/services"
+              className="flex items-center justify-center rounded-xl border border-[#DCE5DF] bg-slate-50 px-4 py-2.5 text-xs font-semibold text-[#526564] hover:bg-slate-100 transition"
+            >
+              Reset Filters
+            </Link>
+          )}
+        </form>
+
+        {/* Filter Controls Row */}
+        <div className="flex flex-wrap items-center justify-between gap-4 pt-3 border-t border-[#DCE5DF]/60 text-xs">
+          {/* Mode Filter */}
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-[#152C2B] flex items-center gap-1">
+              <Filter className="h-3.5 w-3.5 text-[#18756B]" />
+              Mode:
+            </span>
+            <div className="flex gap-1.5">
+              {["All", "Home Visit", "Shop Drop-off"].map((m) => (
+                <Link
+                  key={m}
+                  href={buildQueryUrl({ serviceMode: m === "All" ? undefined : m, page: 1 })}
+                  className={`rounded-lg px-2.5 py-1 font-semibold transition ${
+                    (m === "All" && !serviceMode) || serviceMode === m
+                      ? "bg-[#0B3638] text-white"
+                      : "bg-[#F6F5EF] text-[#526564] hover:bg-[#DCE5DF]"
+                  }`}
+                >
+                  {m}
+                </Link>
+              ))}
+            </div>
+          </div>
+
+          {/* Sort Filter */}
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-[#152C2B]">Sort by:</span>
+            <div className="flex gap-1.5">
+              {[
+                { label: "Newest", val: "newest" },
+                { label: "Price: Low to High", val: "price_asc" },
+                { label: "Price: High to Low", val: "price_desc" },
+              ].map((s) => (
+                <Link
+                  key={s.val}
+                  href={buildQueryUrl({ sort: s.val, page: 1 })}
+                  className={`rounded-lg px-2.5 py-1 font-semibold transition ${
+                    sort === s.val
+                      ? "bg-[#18756B] text-white"
+                      : "bg-[#F6F5EF] text-[#526564] hover:bg-[#DCE5DF]"
+                  }`}
+                >
+                  {s.label}
+                </Link>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Category Pills */}
+      <div className="flex flex-wrap items-center gap-2 pb-2">
         <Link
-          href="/services"
-          className={`rounded-full px-3.5 py-1.5 text-xs font-semibold transition ${
-            !activeCategory
-              ? "bg-sky-600 text-white"
-              : "bg-white text-slate-700 border border-slate-200 hover:bg-slate-50"
+          href={buildQueryUrl({ category: undefined, page: 1 })}
+          className={`rounded-full px-3.5 py-1.5 text-xs font-bold transition ${
+            !category
+              ? "bg-[#18756B] text-white shadow-xs"
+              : "bg-white text-[#526564] border border-[#DCE5DF] hover:bg-[#F6F5EF]"
           }`}
         >
           All Categories
@@ -61,11 +173,11 @@ export default async function ServicesPage(props: {
         {CATEGORIES.map((cat) => (
           <Link
             key={cat}
-            href={`/services?category=${encodeURIComponent(cat)}`}
-            className={`rounded-full px-3.5 py-1.5 text-xs font-semibold transition ${
-              activeCategory === cat
-                ? "bg-sky-600 text-white"
-                : "bg-white text-slate-700 border border-slate-200 hover:bg-slate-50"
+            href={buildQueryUrl({ category: cat, page: 1 })}
+            className={`rounded-full px-3.5 py-1.5 text-xs font-bold transition ${
+              category.toLowerCase() === cat.toLowerCase()
+                ? "bg-[#18756B] text-white shadow-xs"
+                : "bg-white text-[#526564] border border-[#DCE5DF] hover:bg-[#F6F5EF]"
             }`}
           >
             {cat}
@@ -74,88 +186,82 @@ export default async function ServicesPage(props: {
       </div>
 
       {/* Services Grid or Honest Empty State */}
-      {error && filteredServices.length === 0 ? (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 p-8 text-center">
-          <p className="text-sm font-semibold text-amber-800">
-            FixMate API services are temporarily offline or initializing.
+      {error && services.length === 0 ? (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-8 text-center space-y-2">
+          <p className="text-sm font-bold text-amber-900">
+            FixMate services catalog is temporarily offline.
           </p>
-          <p className="mt-1 text-xs text-amber-700">
-            Please make sure the backend server is running and try again shortly.
+          <p className="text-xs text-amber-700">
+            Please check connection and try again shortly.
           </p>
         </div>
-      ) : filteredServices.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-12 text-center">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-400">
+      ) : services.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-[#DCE5DF] bg-white p-12 text-center space-y-3">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#F6F5EF] text-[#526564]">
             <Wrench className="h-6 w-6" />
           </div>
-          <h3 className="mt-4 text-base font-bold text-slate-900">
-            {activeCategory ? `No ${activeCategory} services found` : "No services listed yet"}
+          <h3 className="text-base font-bold text-[#152C2B]">
+            {search || category || serviceMode
+              ? "No services matched your filters"
+              : "No services currently approved"}
           </h3>
-          <p className="mt-2 text-xs text-slate-500 max-w-sm mx-auto">
-            {activeCategory
-              ? `There are currently no approved services in the ${activeCategory} category. Try choosing another category.`
-              : "Our technicians are currently preparing their certified listings. Please check back soon or join as a technician."}
+          <p className="text-xs text-[#526564] max-w-sm mx-auto">
+            {search || category || serviceMode
+              ? "Try broadening your search term or clearing one of the applied filters."
+              : "Our certified technicians are preparing service listings. Check back soon or join as a technician."}
           </p>
-          <div className="mt-6 flex justify-center gap-3">
-            {activeCategory && (
-              <Link
-                href="/services"
-                className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-              >
-                Clear Category Filter
-              </Link>
-            )}
+          <div className="pt-2">
             <Link
-              href="/sign-up"
-              className="rounded-lg bg-sky-600 px-4 py-2 text-xs font-semibold text-white hover:bg-sky-700"
+              href="/services"
+              className="rounded-xl border border-[#DCE5DF] bg-white px-4 py-2 text-xs font-bold text-[#152C2B] hover:bg-[#F6F5EF]"
             >
-              Become a Technician
+              Clear All Filters
             </Link>
           </div>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredServices.map((service: ServiceItem) => (
+          {services.map((service: ServiceItem) => (
             <div
               key={service.id || service._id}
-              className="flex flex-col justify-between rounded-xl border border-slate-200 bg-white p-5 shadow-xs hover:border-sky-500 hover:shadow-md transition"
+              className="flex flex-col justify-between rounded-2xl border border-[#DCE5DF] bg-white p-5 shadow-2xs hover:border-[#18756B] hover:shadow-md transition"
             >
               <div className="space-y-3">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2.5 py-0.5 font-semibold text-sky-700">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-[#18756B]/10 px-2.5 py-0.5 font-bold text-[#18756B]">
                     <Tag className="h-3 w-3" />
                     {service.category}
                   </span>
-                  <span className="font-semibold text-slate-500">{service.serviceMode}</span>
+                  <span className="text-[11px] font-semibold text-[#526564]">{service.serviceMode}</span>
                 </div>
 
-                <h3 className="text-base font-bold text-slate-900 line-clamp-1">{service.title}</h3>
-                <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed">
+                <h3 className="text-base font-bold text-[#152C2B] line-clamp-1">{service.title}</h3>
+                <p className="text-xs text-[#526564] line-clamp-2 leading-relaxed">
                   {service.description}
                 </p>
 
-                <div className="flex flex-wrap gap-3 pt-2 text-xs text-slate-500 border-t border-slate-100">
+                <div className="flex flex-wrap gap-3 pt-2 text-xs text-[#526564] border-t border-[#DCE5DF]/60">
                   <div className="flex items-center gap-1">
-                    <Clock className="h-3.5 w-3.5 text-slate-400" />
+                    <Clock className="h-3.5 w-3.5 text-[#526564]" />
                     <span>{service.estimatedDuration}</span>
                   </div>
                   <div className="flex items-center gap-1">
-                    <MapPin className="h-3.5 w-3.5 text-slate-400" />
+                    <MapPin className="h-3.5 w-3.5 text-[#526564]" />
                     <span>{service.serviceArea}</span>
                   </div>
                 </div>
               </div>
 
-              <div className="mt-4 flex items-center justify-between pt-4 border-t border-slate-100">
+              <div className="mt-5 flex items-center justify-between pt-4 border-t border-[#DCE5DF]/60">
                 <div>
-                  <span className="text-[10px] text-slate-400 uppercase font-semibold">Base Price</span>
-                  <div className="text-lg font-extrabold text-slate-900">${service.basePrice}</div>
+                  <span className="text-[10px] text-[#526564] uppercase font-semibold">From</span>
+                  <div className="text-lg font-extrabold text-[#152C2B]">${service.basePrice}</div>
                 </div>
                 <Link
-                  href={`/sign-in?callbackUrl=/services`}
-                  className="flex items-center gap-1 rounded-lg bg-sky-600 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-sky-700 transition"
+                  href={`/services/${service.id || service._id}`}
+                  className="flex items-center gap-1.5 rounded-xl bg-[#18756B] px-4 py-2 text-xs font-bold text-white hover:bg-[#135d55] transition"
                 >
-                  <span>Request</span>
+                  <span>View Details</span>
                   <ArrowRight className="h-3.5 w-3.5" />
                 </Link>
               </div>
@@ -164,9 +270,35 @@ export default async function ServicesPage(props: {
         </div>
       )}
 
-      {/* Total count footer */}
-      <div className="text-right text-xs text-slate-400">
-        Showing {filteredServices.length} of {total} verified repair services
+      {/* Pagination & Status Footer */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 border-t border-[#DCE5DF] text-xs text-[#526564]">
+        <div>
+          Showing {services.length} of {total} verified repair services
+        </div>
+
+        {totalPages > 1 && (
+          <div className="flex items-center gap-2">
+            <Link
+              href={buildQueryUrl({ page: Math.max(1, page - 1) })}
+              className={`rounded-lg border border-[#DCE5DF] px-3 py-1.5 font-semibold ${
+                page <= 1 ? "pointer-events-none opacity-40 bg-slate-100" : "bg-white hover:bg-[#F6F5EF]"
+              }`}
+            >
+              Previous
+            </Link>
+            <span className="px-2 font-bold text-[#152C2B]">
+              Page {page} of {totalPages}
+            </span>
+            <Link
+              href={buildQueryUrl({ page: Math.min(totalPages, page + 1) })}
+              className={`rounded-lg border border-[#DCE5DF] px-3 py-1.5 font-semibold ${
+                page >= totalPages ? "pointer-events-none opacity-40 bg-slate-100" : "bg-white hover:bg-[#F6F5EF]"
+              }`}
+            >
+              Next
+            </Link>
+          </div>
+        )}
       </div>
     </div>
   );
