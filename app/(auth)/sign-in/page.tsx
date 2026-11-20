@@ -45,7 +45,14 @@ export default function SignInPage() {
       toast.success("Signed in successfully!", { id: toastId });
 
       // Redirect safely to callback or dashboard
-      const safeTarget = callbackUrl.startsWith("/") ? callbackUrl : "/dashboard";
+      // Prevent protocol-relative URLs, backslashes, or dangerous external schemes
+      const isSafeInternalPath =
+        callbackUrl.startsWith("/") &&
+        !callbackUrl.startsWith("//") &&
+        !callbackUrl.includes("\\") &&
+        /^\/[a-zA-Z0-9_\-\/]*$/.test(callbackUrl.split("?")[0]);
+
+      const safeTarget = isSafeInternalPath ? callbackUrl : "/dashboard";
       router.push(safeTarget);
       router.refresh();
     } catch (err: unknown) {

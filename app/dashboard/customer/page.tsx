@@ -1,6 +1,9 @@
 import { FileText, Clock, CheckCircle } from "lucide-react";
+import { requireRole } from "@/lib/auth-guards";
 
-export default function CustomerDashboard() {
+export default async function CustomerDashboard() {
+  await requireRole(["customer"]);
+
   const stats = [
     { label: "Total Requests", value: "0", icon: FileText, desc: "All repair bookings" },
     { label: "Active Jobs", value: "0", icon: Clock, desc: "In-progress repairs" },

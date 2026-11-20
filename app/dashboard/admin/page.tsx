@@ -1,6 +1,9 @@
 import { Users, Shield, Clock } from "lucide-react";
+import { requireRole } from "@/lib/auth-guards";
 
-export default function AdminDashboard() {
+export default async function AdminDashboard() {
+  await requireRole(["admin"]);
+
   const stats = [
     { label: "Total Users", value: "0", icon: Users, desc: "Registered customers & techs" },
     { label: "Total Technicians", value: "0", icon: Shield, desc: "Certified repair partners" },

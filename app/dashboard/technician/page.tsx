@@ -1,6 +1,9 @@
 import { Wrench, CheckCircle, Clock } from "lucide-react";
+import { requireRole } from "@/lib/auth-guards";
 
-export default function TechnicianDashboard() {
+export default async function TechnicianDashboard() {
+  await requireRole(["technician"]);
+
   const stats = [
     { label: "Total Services", value: "0", icon: Wrench, desc: "Services offered" },
     { label: "Approved Services", value: "0", icon: CheckCircle, desc: "Publicly visible" },

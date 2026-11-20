@@ -1,17 +1,9 @@
 import { betterAuth } from "better-auth";
-import { MongoClient } from "mongodb";
 import { mongodbAdapter } from "@better-auth/mongo-adapter";
+import { createAuthMiddleware, APIError } from "better-auth/api";
+import { mongoClient, mongoDb } from "./db";
 
-// Fallback to local MongoDB URI during static build if env var is not set yet in deployment settings
-const uri = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/fixmate-db";
-const dbName = process.env.MONGODB_DBNAME || "fixmate-db";
 const secret = process.env.BETTER_AUTH_SECRET || "fixmate-temporary-build-secret-key-minimum-32-chars";
-
-const client = new MongoClient(uri, {
-  serverSelectionTimeoutMS: 5000,
-  connectTimeoutMS: 5000,
-});
-const db = client.db(dbName);
 
 const trustedOrigins = process.env.BETTER_AUTH_TRUSTED_ORIGINS
   ? process.env.BETTER_AUTH_TRUSTED_ORIGINS.split(",").map((o) => o.trim()).filter(Boolean)
@@ -21,12 +13,41 @@ export const auth = betterAuth({
   baseURL: process.env.BETTER_AUTH_URL || "http://localhost:3000",
   secret,
   trustedOrigins,
-  database: mongodbAdapter(db, {
-    client,
+  database: mongodbAdapter(mongoDb, {
+    client: mongoClient,
   }),
   emailAndPassword: {
     enabled: true,
     minPasswordLength: 6,
+  },
+  hooks: {
+    before: createAuthMiddleware(async (ctx) => {
+      // Server-side password policy & role sanitization
+      if (ctx.path === "/sign-up/email") {
+        const body = ctx.body as Record<string, unknown> | undefined;
+        if (body) {
+          const password = body.password as string | undefined;
+          if (!password || password.length < 6 || !/[A-Z]/.test(password) || !/[a-z]/.test(password)) {
+            throw new APIError("BAD_REQUEST", {
+              message: "Password must be at least 6 characters and contain at least one uppercase and one lowercase letter.",
+            });
+          }
+
+          // Strictly enforce allowed roles: customer or technician. Never allow admin self-selection!
+          const requestedRole = body.role as string | undefined;
+          body.role = requestedRole === "technician" ? "technician" : "customer";
+        }
+      }
+
+      // Prevent role or email escalation in user update
+      if (ctx.path === "/update-user") {
+        const body = ctx.body as Record<string, unknown> | undefined;
+        if (body) {
+          delete body.role;
+          delete body.email;
+        }
+      }
+    }),
   },
   user: {
     additionalFields: {
@@ -53,8 +74,6 @@ export const auth = betterAuth({
     user: {
       create: {
         before: async (user) => {
-          // Strictly sanitize requested role: only "customer" or "technician" allowed
-          // Any invalid, missing, or "admin" value defaults to "customer"
           const requested = user as { role?: string };
           const safeRole = requested.role === "technician" ? "technician" : "customer";
           return {
@@ -67,7 +86,6 @@ export const auth = betterAuth({
       },
       update: {
         before: async (update) => {
-          // Never allow role or email changes through generic user updates
           const safeData = { ...update } as Record<string, unknown>;
           delete safeData.role;
           delete safeData.email;
