@@ -58,6 +58,7 @@ export default function BookingRequestModal({
       body: JSON.stringify({
         serviceId: service.id || service._id,
         customerPhone: phone.trim(),
+        serviceAddress: address.trim(),
         address: address.trim(),
         preferredDate,
         problemDescription: problemDescription.trim(),
@@ -200,8 +201,14 @@ export default function BookingRequestModal({
                   <label className="text-xs font-bold text-[#152C2B]" htmlFor="desc">
                     Problem Symptoms & Details
                   </label>
-                  <span className="text-[10px] text-[#526564]">
-                    Min 20 characters ({problemDescription.length}/20)
+                  <span
+                    className={`text-[10px] font-semibold ${
+                      problemDescription.trim().length >= 20 ? "text-emerald-700" : "text-amber-700"
+                    }`}
+                  >
+                    {problemDescription.trim().length >= 20
+                      ? `✓ ${problemDescription.length} chars (ready)`
+                      : `${problemDescription.length}/20 min chars required`}
                   </span>
                 </div>
                 <div className="relative">
