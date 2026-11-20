@@ -1,91 +1,104 @@
 # FixMate Client
 
-FixMate is an on-demand device and home appliance repair service platform. Customers can discover certified local technicians across 7 repair categories, book doorstep home visits or shop drop-offs, track job progress, and pay securely upon verified job completion.
+FixMate is an on-demand electronic device and home appliance repair marketplace connecting customers with vetted local repair technicians. Customers discover services across 7 specialized repair categories, schedule appointments, track repair lifecycle milestones, and pay securely only after verified repair completion.
+
+## Key Features
+
+- **Multi-Role Workflows**: Tailored portals for Customers, Technicians, and Administrators.
+- **Pay-After-Completion Protection**: Customers pay zero upfront deposits; invoices are settled via Stripe card checkout only after work is completed.
+- **Catalog Discovery**: Server-paginated search, category and service mode filtering, price sorting, and deep links.
+- **Repair Lifecycle State Machine**: Enforces strict transitions (`requested` -> `accepted`/`rejected`, `accepted` -> `in-progress`, `in-progress` -> `completed` with final billable amount).
+- **Audit Timeline**: Timestamped audit trail tracking every status transition with actor email, role, and notes.
+- **Administrative Moderation**: Quality control workflow requiring admin approval for new service listings and price updates.
+- **Settlement & Receipts**: Real-time Stripe webhook verification, customer transaction history, printable invoice modal, and platform revenue ledger.
 
 ## Technology Stack
 
 - **Framework**: Next.js 16 (App Router)
-- **Language**: TypeScript
-- **Styling**: Tailwind CSS v4
+- **Language**: TypeScript 5
+- **Styling**: Tailwind CSS v4 with Petrol (`#0B3638`), Jade (`#18756B`), and Amber (`#F4B740`) design tokens
 - **Authentication**: Better Auth with MongoDB Adapter
 - **Authorization Bridge**: Short-lived HS256 JWTs via `jose` for secure Express API communication
+- **Payments**: Stripe Checkout Sessions with test-mode fulfillment
+- **Testing**: Node.js native test runner (`node --test`)
 - **Notifications**: `react-hot-toast`
 - **Icons**: `lucide-react`
-- **Database**: MongoDB Native Driver with connection pooling
 
-## Architecture & Directory Structure
+## Directory Structure
 
 ```text
 FixMate/
 ├── app/
 │   ├── (auth)/
-│   │   ├── layout.tsx         # Centered authentication shell
-│   │   ├── sign-in/page.tsx   # Email/password login with redirect
-│   │   └── sign-up/page.tsx   # Customer/technician account creation
+│   │   ├── layout.tsx                # Centered authentication shell
+│   │   ├── sign-in/page.tsx          # Login with redirect callbacks
+│   │   └── sign-up/page.tsx          # Registration with server password policy
 │   ├── (public)/
-│   │   ├── layout.tsx         # Public navigation and footer
-│   │   ├── page.tsx           # Repair-focused hero, categories, and workflow
-│   │   ├── about/page.tsx     # How FixMate works & trust guarantees
-│   │   └── services/page.tsx  # Live service catalog with category filtering
+│   │   ├── layout.tsx                # Public navigation & footer
+│   │   ├── page.tsx                  # Split hero, 7 categories, and featured services
+│   │   ├── about/page.tsx            # Transparent 4-step repair lifecycle
+│   │   └── services/                 # Catalog search, filter, and details [id]
 │   ├── api/
-│   │   ├── auth/[...all]/     # Better Auth API endpoints
-│   │   └── token/             # Session-guarded JWT issuer for backend API
+│   │   ├── auth/[...all]/            # Better Auth API endpoints
+│   │   └── token/                    # Session-guarded JWT issuer for backend API
 │   ├── dashboard/
-│   │   ├── layout.tsx         # Authenticated role guard & dashboard shell
-│   │   ├── page.tsx           # Role-based dashboard router
-│   │   ├── customer/page.tsx  # Customer repair requests & bookings
-│   │   ├── technician/page.tsx# Technician service & job management
-│   │   └── admin/page.tsx     # Platform moderation & oversight
-│   ├── error.tsx              # Error boundary
-│   ├── layout.tsx             # Root layout & toast container
-│   ├── loading.tsx            # Global loading skeleton
-│   └── not-found.tsx          # 404 page
-├── components/
-│   ├── Navbar.tsx             # Responsive header with mobile drawer & session state
-│   ├── Footer.tsx             # Footer with categories and navigation
-│   └── DashboardSignOut.tsx   # Session sign-out control
+│   │   ├── layout.tsx                # Role-aware dark petrol sidebar (250px)
+│   │   ├── customer/                 # Overview, bookings, and payment receipts
+│   │   ├── technician/               # Overview, queue, service listings, add service
+│   │   ├── admin/                    # Overview, moderation, user roles, transactions
+│   │   └── profile/page.tsx          # Profile management with photo upload
+│   ├── payment/
+│   │   ├── success/page.tsx          # Stripe session verification return handler
+│   │   └── cancel/page.tsx           # Cancelled checkout return handler
+│   ├── privacy/page.tsx              # Privacy policy
+│   ├── terms/page.tsx                # Terms of service
+│   ├── error.tsx                     # Themed diagnostic error boundary
+│   ├── loading.tsx                   # Themed workshop loading screen
+│   └── not-found.tsx                 # Themed repair 404 page
+├── components/                       # Shared UI and domain components
 ├── lib/
-│   ├── auth.ts                # Server Better Auth configuration & hooks
-│   ├── auth-client.ts         # Client authentication hooks
-│   ├── db.ts                  # Reusable MongoDB client promise
-│   ├── utils.ts               # Class name utility (clsx + tailwind-merge)
-│   └── api/services.ts        # Service catalog API client
-└── types/
-    └── index.ts               # Core domain TypeScript interfaces
+│   ├── __tests__/                    # Automated domain unit tests
+│   ├── api/                          # Token-aware backend API client
+│   ├── auth.ts                       # Better Auth server configuration
+│   ├── auth-client.ts                # Better Auth client hooks
+│   ├── auth-guards.ts                # Server-side role boundaries
+│   └── db.ts                         # Cached MongoDB connection singleton
+└── scripts/
+    └── seed.mjs                      # Idempotent database seeder
 ```
 
 ## Available Scripts
 
-- `npm run dev`: Start local development server on `http://localhost:3000`
-- `npm run build`: Compile and build production Next.js bundle
-- `npm run start`: Run production server
+- `npm run dev`: Start local Next.js development server on port 3000
+- `npm run build`: Compile and generate optimized production static pages
+- `npm run start`: Launch the production build server
 - `npm run lint`: Run ESLint checks
-- `npm run typecheck`: Run TypeScript compiler type checking (`tsc --noEmit`)
+- `npm run typecheck`: Run TypeScript static type checking
+- `npm run test`: Run automated domain unit tests
+- `npm run seed`: Populate demo accounts, approved services, and connected bookings
 
 ## Environment Variables
 
-Configure these environment variables in your local `.env` and Vercel project settings. Never commit `.env` files to git.
+Configure these variables in your deployment settings. Never commit `.env` files to Git.
 
-| Variable | Description | Required In |
-| --- | --- | --- |
-| `BETTER_AUTH_SECRET` | Strong secret key for session cookie encryption | Phase 1 |
-| `BETTER_AUTH_URL` | Application root URL (`http://localhost:3000` or production domain) | Phase 1 |
-| `BETTER_AUTH_TRUSTED_ORIGINS` | Comma-separated list of allowed origins | Phase 1 |
-| `MONGODB_URI` | MongoDB Atlas connection string | Phase 1 |
-| `MONGODB_DBNAME` | Database name (`fixmate-db`) | Phase 1 |
-| `JWT_SECRET` | Shared cryptographic key for issuing API tokens | Phase 1 |
-| `JWT_ISSUER` | Expected JWT issuer (must match frontend origin) | Phase 1 |
-| `JWT_AUDIENCE` | Expected JWT audience (`fixmate-api`) | Phase 1 |
-| `NEXT_PUBLIC_API_URL` | Express backend URL (`http://localhost:5000` or production backend) | Phase 1 |
-| `GOOGLE_CLIENT_ID` | Google OAuth Client ID (optional) | Future |
-| `GOOGLE_CLIENT_SECRET` | Google OAuth Client Secret (optional) | Future |
-| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Stripe publishable key | Payment Phase |
+| Variable | Description |
+| --- | --- |
+| `BETTER_AUTH_SECRET` | Secret key for signing authentication sessions |
+| `BETTER_AUTH_URL` | Base URL of the client application (`http://localhost:3000`) |
+| `BETTER_AUTH_TRUSTED_ORIGINS` | Trusted origins for auth callbacks |
+| `MONGODB_URI` | MongoDB Atlas connection string |
+| `MONGODB_DBNAME` | Target database name (`fixmate-db`) |
+| `JWT_SECRET` | Shared secret key for API authorization tokens |
+| `NEXT_PUBLIC_API_URL` | Base URL of the backend API (`http://localhost:5000`) |
+| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Stripe test publishable key (`pk_test_...`) |
+| `STRIPE_SECRET_KEY` | Stripe test secret key (`sk_test_...`) |
+| `IMGBB_API_KEY` | Optional ImgBB API key for service and profile photo hosting |
 
-## Vercel Deployment
+## Demo Credentials
 
-1. Import the `CodeWithTanim/FixMate` repository in Vercel.
-2. Select Framework Preset: `Next.js`.
-3. Set Root Directory: `.` (repository root).
-4. Build Command: `npm run build`.
-5. Configure all required environment variables in Vercel Project Settings.
-6. Deploy and verify authentication, public pages, and role dashboard routing.
+The database can be seeded idempotently using `npm run seed`:
+
+- **Customer**: `customer@fixmate.dev` / Password: `FixMate2026!`
+- **Technician 1**: `rahim.tech@fixmate.dev` / Password: `FixMate2026!`
+- **Technician 2**: `sarah.appliances@fixmate.dev` / Password: `FixMate2026!`
+- **Admin**: `admin@fixmate.dev` / Password: `FixMate2026!`
