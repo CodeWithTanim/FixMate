@@ -13,28 +13,31 @@ export default function Footer() {
   ];
 
   return (
-    <footer className="border-t border-slate-200 bg-slate-900 text-slate-300">
-      <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 gap-8 md:grid-cols-4">
+    <footer className="border-t border-[#0B3638] bg-[#0B3638] text-[#F6F5EF]">
+      <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-1 gap-10 md:grid-cols-4">
           {/* Brand & mission */}
           <div className="space-y-4">
-            <Link href="/" className="flex items-center gap-2">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-sky-600 text-white">
+            <Link href="/" className="flex items-center gap-2.5">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#F4B740] text-[#152C2B] font-bold">
                 <Wrench className="h-5 w-5" />
               </div>
               <span className="text-xl font-bold tracking-tight text-white">
-                Fix<span className="text-sky-400">Mate</span>
+                Fix<span className="text-[#F4B740]">Mate</span>
               </span>
             </Link>
-            <p className="text-sm text-slate-400 leading-relaxed">
+            <p className="text-xs text-[#DCE5DF]/80 leading-relaxed">
               Transparent, reliable on-demand repair services. Connect with local certified technicians for smartphones, computers, and home appliances.
             </p>
+            <div className="text-[11px] text-[#F4B740] font-semibold">
+              Payment only upon verified job completion.
+            </div>
           </div>
 
           {/* Quick links */}
           <div>
-            <h3 className="text-sm font-semibold uppercase tracking-wider text-white">Navigation</h3>
-            <ul className="mt-4 space-y-2 text-sm">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-[#F4B740]">Navigation</h3>
+            <ul className="mt-4 space-y-2.5 text-xs text-[#DCE5DF]">
               <li>
                 <Link href="/" className="hover:text-white transition">Home</Link>
               </li>
@@ -45,15 +48,15 @@ export default function Footer() {
                 <Link href="/about" className="hover:text-white transition">How It Works</Link>
               </li>
               <li>
-                <Link href="/sign-up" className="hover:text-white transition">Become a Technician</Link>
+                <Link href="/sign-up" className="hover:text-white transition">Join as Technician</Link>
               </li>
             </ul>
           </div>
 
           {/* Repair Categories */}
           <div>
-            <h3 className="text-sm font-semibold uppercase tracking-wider text-white">Service Categories</h3>
-            <ul className="mt-4 space-y-2 text-sm">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-[#F4B740]">Repair Categories</h3>
+            <ul className="mt-4 space-y-2.5 text-xs text-[#DCE5DF]">
               {categories.slice(0, 5).map((cat) => (
                 <li key={cat}>
                   <Link href={`/services?category=${encodeURIComponent(cat)}`} className="hover:text-white transition">
@@ -66,21 +69,21 @@ export default function Footer() {
 
           {/* Trust and safety */}
           <div>
-            <h3 className="text-sm font-semibold uppercase tracking-wider text-white">Payment & Safety</h3>
-            <p className="mt-4 text-sm text-slate-400 leading-relaxed">
-              Pay only after your device or appliance has been inspected and repaired. Protected by secure Stripe payments and verified local technicians.
+            <h3 className="text-xs font-bold uppercase tracking-wider text-[#F4B740]">Guaranteed Workflows</h3>
+            <p className="mt-4 text-xs text-[#DCE5DF]/80 leading-relaxed">
+              Every job begins with clear base rates and agreed diagnostic scopes. Safe payments processed via Stripe test mode.
             </p>
-            <div className="mt-4 text-xs text-slate-500">
-              Customer support available 7 days a week.
+            <div className="mt-4 text-[11px] text-[#DCE5DF]/60">
+              Demo platform for certified device & appliance repairs.
             </div>
           </div>
         </div>
 
-        <div className="mt-8 border-t border-slate-800 pt-8 flex flex-col md:flex-row items-center justify-between text-xs text-slate-500">
+        <div className="mt-12 border-t border-[#DCE5DF]/10 pt-6 flex flex-col md:flex-row items-center justify-between text-[11px] text-[#DCE5DF]/60">
           <p>&copy; {new Date().getFullYear()} FixMate. All rights reserved.</p>
-          <div className="flex gap-6 mt-4 md:mt-0">
-            <Link href="/about" className="hover:text-slate-400">Privacy Policy</Link>
-            <Link href="/about" className="hover:text-slate-400">Terms of Service</Link>
+          <div className="flex gap-6 mt-3 md:mt-0">
+            <Link href="/about" className="hover:text-white transition">Terms & Protection</Link>
+            <Link href="/about" className="hover:text-white transition">Privacy Notice</Link>
           </div>
         </div>
       </div>
