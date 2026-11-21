@@ -143,7 +143,7 @@ export async function apiRequest<T = unknown>(
     headers.set("Content-Type", "application/json");
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+  const baseUrl = process.env.NEXT_PUBLIC_API_URL || "https://fix-mate-server-teal.vercel.app";
   const url = `${baseUrl}${endpoint.startsWith("/") ? endpoint : `/${endpoint}`}`;
 
   try {

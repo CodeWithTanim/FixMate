@@ -1,4 +1,4 @@
-# 🛠️ FixMate - On-Demand Repair Marketplace (Client)
+# FixMate - On-Demand Repair Marketplace (Client)
 
 <div align="center">
 
@@ -230,14 +230,14 @@ Create a `.env.local` file in the root directory:
 
 ```env
 # Application URLs
-NEXT_PUBLIC_API_URL=http://localhost:5000
-BETTER_AUTH_URL=http://localhost:3000
-BETTER_AUTH_TRUSTED_ORIGINS=http://localhost:3000
+NEXT_PUBLIC_API_URL=https://fix-mate-server-teal.vercel.app
+BETTER_AUTH_URL=https://fix-mate-flame.vercel.app
+BETTER_AUTH_TRUSTED_ORIGINS=https://fix-mate-flame.vercel.app,http://localhost:3000
 
 # Authentication & Security
 BETTER_AUTH_SECRET=your_super_secret_better_auth_key_min_32_chars_long
 JWT_SECRET=your_shared_jwt_secret_with_express_backend_min_32_chars
-JWT_ISSUER=http://localhost:3000
+JWT_ISSUER=https://fix-mate-flame.vercel.app
 JWT_AUDIENCE=fixmate-api
 
 # Database

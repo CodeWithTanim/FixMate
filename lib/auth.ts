@@ -11,10 +11,10 @@ const secret = process.env.BETTER_AUTH_SECRET || (
 
 const trustedOrigins = process.env.BETTER_AUTH_TRUSTED_ORIGINS
   ? process.env.BETTER_AUTH_TRUSTED_ORIGINS.split(",").map((o) => o.trim()).filter(Boolean)
-  : ["http://localhost:3000"];
+  : ["https://fix-mate-flame.vercel.app", "http://localhost:3000"];
 
 export const auth = betterAuth({
-  baseURL: process.env.BETTER_AUTH_URL || "http://localhost:3000",
+  baseURL: process.env.BETTER_AUTH_URL || "https://fix-mate-flame.vercel.app",
   secret,
   trustedOrigins,
   database: mongodbAdapter(mongoDb, {

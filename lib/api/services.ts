@@ -1,6 +1,6 @@
 import type { ServiceItem } from "@/types";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://fix-mate-server-teal.vercel.app";
 
 export interface ServicesResponse {
   data: ServiceItem[];

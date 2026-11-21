@@ -31,7 +31,7 @@ export default function ServiceReviewsList({ serviceId }: ServiceReviewsListProp
       try {
         setLoading(true);
         setError(null);
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://fix-mate-server-teal.vercel.app";
         const res = await fetch(`${apiUrl}/api/services/${serviceId}/reviews`, { cache: "no-store" });
         if (!res.ok) {
           throw new Error(`Failed to load reviews (${res.status})`);

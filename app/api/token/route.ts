@@ -26,10 +26,9 @@ export async function POST() {
       const trustedList = process.env.BETTER_AUTH_TRUSTED_ORIGINS
         ? process.env.BETTER_AUTH_TRUSTED_ORIGINS.split(",").map((o) => o.trim()).filter(Boolean)
         : [];
-      const isDev = process.env.NODE_ENV !== "production";
-      const devLoopbacks = isDev ? ["http://localhost:3000", "http://127.0.0.1:3000"] : [];
+      const defaultOrigins = ["https://fix-mate-flame.vercel.app", "http://localhost:3000", "http://127.0.0.1:3000"];
       const allowedOrigins = [
-        ...devLoopbacks,
+        ...defaultOrigins,
         process.env.BETTER_AUTH_URL,
         process.env.JWT_ISSUER,
         process.env.CLIENT_URL,
@@ -67,7 +66,7 @@ export async function POST() {
       );
     }
 
-    const issuer = process.env.JWT_ISSUER || "http://localhost:3000";
+    const issuer = process.env.JWT_ISSUER || "https://fix-mate-flame.vercel.app";
     const audience = process.env.JWT_AUDIENCE || "fixmate-api";
     const secretKey = new TextEncoder().encode(secretStr);
 
