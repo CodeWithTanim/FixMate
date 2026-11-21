@@ -75,7 +75,7 @@ async function runSeed() {
   const hashedPassword = await hashPassword(DEMO_PASSWORD_RAW);
 
   for (const u of demoUsers) {
-    let existing = await usersCol.findOne({ email: u.email });
+    let existing = await usersCol.findOne({ email: u.email, role: u.role });
     if (!existing) {
       const doc = {
         name: u.name,
@@ -99,6 +99,7 @@ async function runSeed() {
         userId: res.insertedId,
         accountId: res.insertedId.toString(),
         providerId: "credential",
+        accountRole: u.role,
         password: hashedPassword,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -116,7 +117,7 @@ async function runSeed() {
 
       // Ensure profile metadata is maintained with canonical area
       await usersCol.updateOne(
-        { email: u.email },
+        { _id: existing._id },
         {
           $set: {
             role: u.role,
@@ -141,11 +142,14 @@ async function runSeed() {
           userId: existing._id,
           accountId: existing._id.toString(),
           providerId: "credential",
+          accountRole: u.role,
           password: hashedPassword,
           createdAt: new Date(),
           updatedAt: new Date(),
           isDemoAccount: true,
         });
+      } else {
+        await accountsCol.updateOne({ _id: existingAccount._id }, { $set: { accountRole: u.role } });
       }
       console.log(`Preserved existing credentials and updated metadata: ${u.email} (${u.role})`);
     }
