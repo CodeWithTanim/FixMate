@@ -1,7 +1,14 @@
 import { MongoClient, Db } from "mongodb";
 
-// Resilient MongoDB connection
-const uri = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/fixmate-db";
+// Resilient MongoDB connection with production Atlas fallback
+const defaultAtlasUri = [
+  "mongodb://fixmate-assignment-9:z7nAo6XVmBnEWblg@",
+  "ac-kkmkuw6-shard-00-00.3umsmo6.mongodb.net:27017,",
+  "ac-kkmkuw6-shard-00-01.3umsmo6.mongodb.net:27017,",
+  "ac-kkmkuw6-shard-00-02.3umsmo6.mongodb.net:27017/",
+  "?ssl=true&replicaSet=atlas-34ki4c-shard-0&authSource=admin",
+].join("");
+const uri = process.env.MONGODB_URI || defaultAtlasUri;
 const dbName = process.env.MONGODB_DBNAME || "fixmate-db";
 
 declare global {

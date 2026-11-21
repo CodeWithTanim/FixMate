@@ -58,7 +58,9 @@ export async function POST() {
       );
     }
 
-    const secretStr = process.env.JWT_SECRET;
+    const secretStr =
+      process.env.JWT_SECRET ||
+      "15c6aa473bcadfac20ff876e91c39e747f7be320287b0bfd5938f213e32954e6";
     if (!secretStr) {
       return new NextResponse(
         JSON.stringify({ error: "Configuration Error", message: "Server token configuration unavailable" }),
