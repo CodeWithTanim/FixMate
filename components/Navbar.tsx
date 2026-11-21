@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import { Menu, X, LogOut, LayoutDashboard, ChevronDown, User as UserIcon } from "lucide-react";
+import { Menu, X, LogOut, LayoutDashboard, ChevronDown, User as UserIcon, Wrench, ShieldCheck } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 import { signOutUser } from "@/lib/api/client";
 import toast from "react-hot-toast";
@@ -63,6 +63,28 @@ export default function Navbar() {
       router.refresh();
     } catch {
       toast.error("Failed to complete sign out");
+    }
+  };
+
+  const handleSwitchRole = async (targetRole: "customer" | "technician") => {
+    setDropdownOpen(false);
+    setMobileMenuOpen(false);
+    const toastId = toast.loading(`Switching to ${targetRole === "technician" ? "Technician" : "Customer"} Portal...`);
+    try {
+      const res = await fetch("/api/auth/switch-role", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role: targetRole }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to switch role");
+      }
+      toast.success(`Switched to ${targetRole}!`, { id: toastId });
+      window.location.href = data.redirectUrl || `/dashboard/${targetRole}`;
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Role switch failed";
+      toast.error(msg, { id: toastId });
     }
   };
 
@@ -132,6 +154,29 @@ export default function Navbar() {
                     <LayoutDashboard className="h-3.5 w-3.5 text-[#18756B]" />
                     <span>{role.charAt(0).toUpperCase() + role.slice(1)} Dashboard</span>
                   </Link>
+                  {role !== "admin" && (
+                    <button
+                      type="button"
+                      onClick={() => handleSwitchRole(role === "technician" ? "customer" : "technician")}
+                      className={`w-full flex items-center gap-2 px-3 py-2 text-xs font-bold transition cursor-pointer text-left ${
+                        role === "technician"
+                          ? "text-[#0B3638] bg-emerald-50 hover:bg-emerald-100"
+                          : "text-[#18756B] bg-[#18756B]/10 hover:bg-[#18756B]/20"
+                      }`}
+                    >
+                      {role === "technician" ? (
+                        <>
+                          <ShieldCheck className="h-3.5 w-3.5 text-[#0B3638]" />
+                          <span>Switch to Customer</span>
+                        </>
+                      ) : (
+                        <>
+                          <Wrench className="h-3.5 w-3.5 text-[#18756B]" />
+                          <span>Switch to Technician</span>
+                        </>
+                      )}
+                    </button>
+                  )}
                   <Link
                     href="/dashboard/profile"
                     onClick={() => setDropdownOpen(false)}
@@ -216,6 +261,29 @@ export default function Navbar() {
                   >
                     Go to {role.toUpperCase()} Dashboard
                   </Link>
+                  {role !== "admin" && (
+                    <button
+                      type="button"
+                      onClick={() => handleSwitchRole(role === "technician" ? "customer" : "technician")}
+                      className={`w-full flex items-center justify-center gap-2 rounded-xl py-2 px-3 text-xs font-bold transition cursor-pointer border ${
+                        role === "technician"
+                          ? "bg-emerald-50 text-[#0B3638] border-emerald-200"
+                          : "bg-[#18756B]/10 text-[#18756B] border-[#18756B]/20"
+                      }`}
+                    >
+                      {role === "technician" ? (
+                        <>
+                          <ShieldCheck className="h-3.5 w-3.5" />
+                          <span>Switch to Customer Portal</span>
+                        </>
+                      ) : (
+                        <>
+                          <Wrench className="h-3.5 w-3.5" />
+                          <span>Switch to Technician Portal</span>
+                        </>
+                      )}
+                    </button>
+                  )}
                   <Link
                     href="/dashboard/profile"
                     onClick={() => setMobileMenuOpen(false)}

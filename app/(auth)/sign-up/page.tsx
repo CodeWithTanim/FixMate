@@ -101,6 +101,33 @@ function SignUpForm() {
       } as unknown as { name: string; email: string; password: string });
 
       if (res.error) {
+        const errMsg = String(res.error.message || "").toLowerCase();
+        const errCode = String((res.error as { code?: string })?.code || "");
+        const isDuplicate = errMsg.includes("already exists") || errCode === "USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL";
+
+        if (isDuplicate) {
+          // Existing account found with this email; authenticate and switch active role
+          const loginRes = await authClient.signIn.email({
+            email: cleanEmail,
+            password: cleanPassword,
+          });
+
+          if (!loginRes.error) {
+            await fetch("/api/auth/switch-role", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ role }),
+            }).catch(() => {});
+
+            toast.success(`Welcome to your ${role} portal!`, { id: toastId });
+            const defaultRoleUrl = role === "technician" ? "/dashboard/technician" : "/dashboard/customer";
+            const targetUrl = getSafeRedirectUrl(callbackUrl, defaultRoleUrl);
+            router.push(targetUrl);
+            router.refresh();
+            return;
+          }
+        }
+
         const errorText = res.error.message || (res.error as { statusText?: string })?.statusText || "Failed to create account. Please try again.";
         toast.error(errorText, { id: toastId });
         setErrorMsg(errorText);

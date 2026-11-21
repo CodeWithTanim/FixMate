@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Home, User as UserIcon } from "lucide-react";
+import { Home, User as UserIcon, Wrench, ShieldCheck } from "lucide-react";
+import toast from "react-hot-toast";
 import UserAvatar from "./UserAvatar";
 import ThemeToggle from "./ThemeToggle";
 
@@ -45,6 +46,26 @@ export default function DashboardHeader({ user }: DashboardHeaderProps) {
     };
   }, []);
 
+  const handleSwitchRole = async (targetRole: "customer" | "technician") => {
+    const toastId = toast.loading(`Switching to ${targetRole === "technician" ? "Technician" : "Customer"} Portal...`);
+    try {
+      const res = await fetch("/api/auth/switch-role", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role: targetRole }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to switch role");
+      }
+      toast.success(`Active role switched to ${targetRole}!`, { id: toastId });
+      window.location.href = data.redirectUrl || `/dashboard/${targetRole}`;
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Role switch failed";
+      toast.error(msg, { id: toastId });
+    }
+  };
+
   const displayName = profileOverride?.name || user.name;
   const displayImage = profileOverride?.image !== undefined ? profileOverride.image : user.image;
 
@@ -57,6 +78,29 @@ export default function DashboardHeader({ user }: DashboardHeaderProps) {
           <span className="text-xs font-bold text-[#152C2B] bg-[#F6F5EF] px-2.5 py-1 rounded-md border border-[#DCE5DF]">
             {displayName} ({user.role})
           </span>
+          {user.role !== "admin" && (
+            <button
+              type="button"
+              onClick={() => handleSwitchRole(user.role === "technician" ? "customer" : "technician")}
+              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-bold transition cursor-pointer border shadow-2xs ${
+                user.role === "technician"
+                  ? "bg-emerald-50 text-[#0B3638] border-emerald-300 hover:bg-emerald-100"
+                  : "bg-[#18756B]/10 text-[#18756B] border-[#18756B]/30 hover:bg-[#18756B]/20"
+              }`}
+            >
+              {user.role === "technician" ? (
+                <>
+                  <ShieldCheck className="h-3.5 w-3.5 text-[#0B3638]" />
+                  <span>Switch to Customer</span>
+                </>
+              ) : (
+                <>
+                  <Wrench className="h-3.5 w-3.5 text-[#18756B]" />
+                  <span>Switch to Technician</span>
+                </>
+              )}
+            </button>
+          )}
         </div>
       </div>
 

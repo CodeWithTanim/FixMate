@@ -116,7 +116,13 @@ function SignInForm() {
       if (userRole === "admin") {
         targetRoleUrl = "/dashboard/admin";
       } else if (userRole && userRole !== role) {
-        targetRoleUrl = `/dashboard/${userRole}`;
+        // User is logging in under a different portal tab; switch active role seamlessly
+        await fetch("/api/auth/switch-role", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ role }),
+        }).catch(() => {});
+        targetRoleUrl = `/dashboard/${role}`;
       }
 
       const targetUrl = getSafeRedirectUrl(callbackUrl, targetRoleUrl);

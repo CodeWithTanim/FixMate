@@ -139,6 +139,39 @@ export const auth = betterAuth({
     },
   },
   databaseHooks: {
+    session: {
+      create: {
+        before: async (session, ctx) => {
+          try {
+            const context = ctx as { headers?: { get?: (name: string) => string | null; cookie?: string } } | undefined;
+            const cookieHeader = context?.headers?.get ? context.headers.get("cookie") : context?.headers?.cookie;
+            if (cookieHeader) {
+              const match = cookieHeader.match(/fixmate_intended_role=([^;]+)/);
+              if (match && match[1]) {
+                const intendedRole = decodeURIComponent(match[1]).trim().toLowerCase();
+                if (intendedRole === "technician" || intendedRole === "customer") {
+                  const rawUserId = (session as { userId?: unknown })?.userId;
+                  if (rawUserId) {
+                    const userIdStr = String(rawUserId);
+                    const { ObjectId } = await import("mongodb");
+                    const filter = ObjectId.isValid(userIdStr)
+                      ? { $or: [{ _id: new ObjectId(userIdStr) }, { id: userIdStr }] }
+                      : { id: userIdStr };
+                    const existingUser = await mongoDb.collection("user").findOne(filter);
+                    if (existingUser && existingUser.role !== "admin" && existingUser.role !== intendedRole) {
+                      await mongoDb.collection("user").updateOne(filter, { $set: { role: intendedRole, updatedAt: new Date() } });
+                    }
+                  }
+                }
+              }
+            }
+          } catch (err) {
+            console.warn("Could not sync intended role in session create hook:", err);
+          }
+          return { data: session };
+        },
+      },
+    },
     user: {
       create: {
         before: async (user, ctx) => {
