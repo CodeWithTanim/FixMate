@@ -19,7 +19,8 @@ import {
   X,
   ExternalLink,
 } from "lucide-react";
-import { authClient } from "@/lib/auth-client";
+import { signOutUser } from "@/lib/api/client";
+import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
 
 interface DashboardSidebarProps {
@@ -49,16 +50,27 @@ export default function DashboardSidebar({ user }: DashboardSidebarProps) {
       }
     };
 
+    const handleSignOutEvent = () => {
+      setProfileOverride(null);
+    };
+
     window.addEventListener("fixmate:profile-updated", handleProfileUpdate);
+    window.addEventListener("fixmate:sign-out", handleSignOutEvent);
     return () => {
       window.removeEventListener("fixmate:profile-updated", handleProfileUpdate);
+      window.removeEventListener("fixmate:sign-out", handleSignOutEvent);
     };
   }, []);
 
   const handleSignOut = async () => {
-    await authClient.signOut();
-    router.push("/");
-    router.refresh();
+    try {
+      await signOutUser();
+      toast.success("Signed out successfully");
+      router.push("/");
+      router.refresh();
+    } catch {
+      toast.error("Failed to complete sign out");
+    }
   };
 
   const displayName = profileOverride?.name || user.name;

@@ -1,5 +1,28 @@
+import { authClient } from "@/lib/auth-client";
+
 let memoryToken: string | null = null;
 let tokenExpiresAt: number = 0;
+let inFlightTokenPromise: Promise<string | null> | null = null;
+let activeSessionEpoch: number = 0;
+
+export function clearApiToken() {
+  activeSessionEpoch++;
+  memoryToken = null;
+  tokenExpiresAt = 0;
+  inFlightTokenPromise = null;
+}
+
+export async function signOutUser() {
+  clearApiToken();
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("fixmate:sign-out"));
+  }
+  try {
+    await authClient.signOut();
+  } catch (err) {
+    console.warn("Sign-out network notice:", err);
+  }
+}
 
 export async function getApiToken(): Promise<string | null> {
   const now = Date.now();
@@ -7,38 +30,58 @@ export async function getApiToken(): Promise<string | null> {
     return memoryToken;
   }
 
-  try {
-    const res = await fetch("/api/token", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      cache: "no-store",
-    });
-
-    if (!res.ok) {
-      memoryToken = null;
-      return null;
-    }
-
-    const data = await res.json();
-    memoryToken = data.token;
-    tokenExpiresAt = now + (data.expiresIn || 300) * 1000;
-    return memoryToken;
-  } catch {
-    memoryToken = null;
-    return null;
+  if (inFlightTokenPromise) {
+    return inFlightTokenPromise;
   }
-}
 
-export function clearApiToken() {
-  memoryToken = null;
-  tokenExpiresAt = 0;
+  const currentEpoch = activeSessionEpoch;
+
+  inFlightTokenPromise = (async () => {
+    try {
+      const res = await fetch("/api/token", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+      });
+
+      // Discard token if sign-out occurred during fetch
+      if (activeSessionEpoch !== currentEpoch) {
+        return null;
+      }
+
+      if (!res.ok) {
+        memoryToken = null;
+        tokenExpiresAt = 0;
+        return null;
+      }
+
+      const data = await res.json();
+      if (activeSessionEpoch !== currentEpoch) {
+        return null;
+      }
+
+      memoryToken = data.token;
+      tokenExpiresAt = Date.now() + (data.expiresIn || 300) * 1000;
+      return memoryToken;
+    } catch {
+      if (activeSessionEpoch === currentEpoch) {
+        memoryToken = null;
+        tokenExpiresAt = 0;
+      }
+      return null;
+    } finally {
+      inFlightTokenPromise = null;
+    }
+  })();
+
+  return inFlightTokenPromise;
 }
 
 export async function apiRequest<T = unknown>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<{ data?: T; error?: string; status: number }> {
-  const token = await getApiToken();
+  let token = await getApiToken();
   const headers = new Headers(options.headers || {});
 
   if (token) {
@@ -52,10 +95,23 @@ export async function apiRequest<T = unknown>(
   const url = `${baseUrl}${endpoint.startsWith("/") ? endpoint : `/${endpoint}`}`;
 
   try {
-    const res = await fetch(url, {
+    let res = await fetch(url, {
       ...options,
       headers,
     });
+
+    // Bounded retry on genuine 401 token expiry for idempotent GET requests only
+    if (res.status === 401 && token && (!options.method || options.method === "GET")) {
+      clearApiToken();
+      token = await getApiToken();
+      if (token) {
+        headers.set("Authorization", `Bearer ${token}`);
+        res = await fetch(url, {
+          ...options,
+          headers,
+        });
+      }
+    }
 
     const data = await res.json().catch(() => null);
 

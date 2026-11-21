@@ -5,7 +5,8 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Wrench, Menu, X, LogOut, LayoutDashboard, ChevronDown } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
-import { clearApiToken } from "@/lib/api/client";
+import { signOutUser } from "@/lib/api/client";
+import toast from "react-hot-toast";
 import type { UserProfile } from "@/types";
 
 export default function Navbar() {
@@ -27,9 +28,15 @@ export default function Navbar() {
       }
     };
 
+    const handleSignOutEvent = () => {
+      setProfileOverride(null);
+    };
+
     window.addEventListener("fixmate:profile-updated", handleProfileUpdate);
+    window.addEventListener("fixmate:sign-out", handleSignOutEvent);
     return () => {
       window.removeEventListener("fixmate:profile-updated", handleProfileUpdate);
+      window.removeEventListener("fixmate:sign-out", handleSignOutEvent);
     };
   }, []);
 
@@ -44,11 +51,15 @@ export default function Navbar() {
   ];
 
   const handleSignOut = async () => {
-    clearApiToken();
-    await authClient.signOut();
-    setDropdownOpen(false);
-    router.push("/");
-    router.refresh();
+    try {
+      await signOutUser();
+      setDropdownOpen(false);
+      toast.success("Signed out successfully");
+      router.push("/");
+      router.refresh();
+    } catch {
+      toast.error("Failed to complete sign out");
+    }
   };
 
   return (

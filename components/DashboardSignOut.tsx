@@ -1,16 +1,22 @@
 "use client";
 
 import { LogOut } from "lucide-react";
-import { authClient } from "@/lib/auth-client";
+import { signOutUser } from "@/lib/api/client";
 import { useRouter } from "next/navigation";
+import toast from "react-hot-toast";
 
 export default function DashboardSignOut() {
   const router = useRouter();
 
   const handleSignOut = async () => {
-    await authClient.signOut();
-    router.push("/");
-    router.refresh();
+    try {
+      await signOutUser();
+      toast.success("Signed out successfully");
+      router.push("/");
+      router.refresh();
+    } catch {
+      toast.error("Failed to complete sign out");
+    }
   };
 
   return (

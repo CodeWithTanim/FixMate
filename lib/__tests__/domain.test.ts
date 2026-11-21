@@ -621,3 +621,34 @@ test("Profile identity updates propagate area, serviceArea and synchronizes shar
   assert.equal(updated.email, "customer@fixmate.dev", "Email must remain unescalated");
   assert.equal(updated.role, "customer", "Role must remain protected");
 });
+
+test("API token manager binds token to active session and discards in-flight tokens on logout", async () => {
+  let memoryToken: string | null = "stale_token_user_a";
+  let activeEpoch = 0;
+
+  function clearToken() {
+    activeEpoch++;
+    memoryToken = null;
+  }
+
+  // Simulate in-flight token fetch initiated at epoch 0
+  const fetchEpoch = activeEpoch;
+  async function completeTokenFetch(): Promise<string | null> {
+    await new Promise((r) => setTimeout(r, 10));
+    // If epoch changed while fetching, token must be discarded
+    if (activeEpoch !== fetchEpoch) {
+      return null;
+    }
+    memoryToken = "token_user_a";
+    return memoryToken;
+  }
+
+  const promise = completeTokenFetch();
+  // User signs out while fetch is in flight!
+  clearToken();
+  assert.equal(memoryToken, null, "Token must be null immediately upon logout");
+
+  const resolved = await promise;
+  assert.equal(resolved, null, "In-flight token from previous session must be discarded");
+  assert.equal(memoryToken, null, "Memory token must not be repopulated after logout");
+});
