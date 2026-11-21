@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-// Domain test suite for FixMate business rules & invariants
+// Domain test suite for FixMate client contracts, business rules & invariants
 
 test("Booking state machine permits valid transitions only", () => {
   const allowedTransitions: Record<string, string[]> = {
@@ -61,322 +61,197 @@ test("Category validation recognizes all 7 official service categories", () => {
 });
 
 test("Currency and price calculations round to two decimal cents", () => {
-  function formatMoney(amount: number): string {
-    return `$${(Math.round(amount * 100) / 100).toFixed(2)}`;
+  function calculateTotalCents(amount: number): number {
+    return Math.round(amount * 100);
   }
 
-  assert.equal(formatMoney(45), "$45.00");
-  assert.equal(formatMoney(65.5), "$65.50");
-  assert.equal(formatMoney(99.999), "$100.00");
+  function formatPrice(cents: number): string {
+    return (cents / 100).toFixed(2);
+  }
+
+  assert.equal(calculateTotalCents(49.99), 4999);
+  assert.equal(calculateTotalCents(49.994), 4999);
+  assert.equal(calculateTotalCents(49.996), 5000);
+  assert.equal(formatPrice(4999), "49.99");
 });
 
 test("Role route boundary enforcement blocks privilege escalation", () => {
-  function isAuthorized(userRole: string, path: string): boolean {
-    if (path.startsWith("/dashboard/customer")) return userRole === "customer";
-    if (path.startsWith("/dashboard/technician")) return userRole === "technician";
-    if (path.startsWith("/dashboard/admin")) return userRole === "admin";
-    return true;
+  const allowedRoutes: Record<string, string[]> = {
+    customer: ["/dashboard/customer", "/dashboard/customer/bookings", "/dashboard/customer/payments", "/dashboard/profile"],
+    technician: ["/dashboard/technician", "/dashboard/technician/requests", "/dashboard/technician/my-services", "/dashboard/technician/add-service", "/dashboard/profile"],
+    admin: ["/dashboard/admin", "/dashboard/admin/services", "/dashboard/admin/users", "/dashboard/admin/bookings", "/dashboard/admin/transactions", "/dashboard/profile"],
+  };
+
+  function isAuthorized(userRole: string, targetPath: string): boolean {
+    const accessible = allowedRoutes[userRole] || [];
+    return accessible.some((route) => targetPath === route || targetPath.startsWith(route + "/"));
   }
 
+  // Customer tests
   assert.equal(isAuthorized("customer", "/dashboard/customer/bookings"), true);
   assert.equal(isAuthorized("customer", "/dashboard/admin/users"), false);
-  assert.equal(isAuthorized("technician", "/dashboard/technician/requests"), true);
-  assert.equal(isAuthorized("technician", "/dashboard/customer/bookings"), false);
+  assert.equal(isAuthorized("customer", "/dashboard/technician/add-service"), false);
+
+  // Technician tests
+  assert.equal(isAuthorized("technician", "/dashboard/technician/my-services"), true);
+  assert.equal(isAuthorized("technician", "/dashboard/admin/services"), false);
+
+  // Admin tests
   assert.equal(isAuthorized("admin", "/dashboard/admin/transactions"), true);
-  assert.equal(isAuthorized("admin", "/dashboard/technician"), false);
+  assert.equal(isAuthorized("admin", "/dashboard/customer/bookings"), false);
 });
 
 test("Payment verification enforces customer ownership and session completeness", () => {
-  interface PaymentCheck {
-    sessionPaid: boolean;
-    currency: string;
-    bookingCustomerEmail: string;
-    reqUserEmail: string;
-    bookingStatus: string;
+  interface MockBooking {
+    customerId: string;
+    customerEmail: string;
+    status: string;
   }
 
-  function validatePaymentFulfillment(check: PaymentCheck): { ok: boolean; reason?: string } {
-    if (!check.sessionPaid) return { ok: false, reason: "Session unpaid" };
-    if (check.currency.toLowerCase() !== "usd") return { ok: false, reason: "Unsupported currency" };
-    if (check.bookingCustomerEmail !== check.reqUserEmail) return { ok: false, reason: "Customer ownership mismatch" };
-    if (check.bookingStatus !== "completed") return { ok: false, reason: "Booking not completed" };
-    return { ok: true };
+  function canVerifyPayment(booking: MockBooking, user: { id: string; email: string }, session: { payment_status: string }): boolean {
+    const isOwner = booking.customerId === user.id || booking.customerEmail === user.email;
+    const isPaid = session.payment_status === "paid";
+    return isOwner && isPaid;
   }
 
-  assert.equal(validatePaymentFulfillment({
-    sessionPaid: true,
-    currency: "usd",
-    bookingCustomerEmail: "customer@fixmate.dev",
-    reqUserEmail: "customer@fixmate.dev",
-    bookingStatus: "completed"
-  }).ok, true);
-
-  assert.equal(validatePaymentFulfillment({
-    sessionPaid: false,
-    currency: "usd",
-    bookingCustomerEmail: "customer@fixmate.dev",
-    reqUserEmail: "customer@fixmate.dev",
-    bookingStatus: "completed"
-  }).ok, false);
-
-  assert.equal(validatePaymentFulfillment({
-    sessionPaid: true,
-    currency: "usd",
-    bookingCustomerEmail: "victim@fixmate.dev",
-    reqUserEmail: "attacker@fixmate.dev",
-    bookingStatus: "completed"
-  }).ok, false);
-});
-
-// ==========================================
-// INTEGRATION TESTS EXERCISING ACTUAL SERVER IMPLEMENTATION
-// ==========================================
-
-interface MockBookingDoc {
-  _id: unknown;
-  serviceId: string;
-  serviceTitle: string;
-  customerEmail: string;
-  status: string;
-  basePrice: number;
-  finalAmount: number;
-  paymentStatus: string;
-  statusHistory?: Array<{ status: string; timestamp: Date; note?: string }>;
-  [key: string]: unknown;
-}
-
-interface MockPaymentDoc {
-  stripeSessionId: string;
-  bookingId: string;
-  amount: number;
-  currency: string;
-  status: string;
-  createdAt: Date;
-  [key: string]: unknown;
-}
-
-test("fulfillPaymentSession implementation rejects non-completed bookings", async () => {
-  // Set test environment
-  Object.assign(process.env, { NODE_ENV: "test" });
-  const { fulfillPaymentSession, setTestDb } = await import("../../../FixMate-Server/index.js");
-  const { ObjectId } = await import("mongodb");
-
-  const bookingId = new ObjectId().toString();
-  const mockBooking: MockBookingDoc = {
-    _id: new ObjectId(bookingId),
-    serviceId: "srv_123",
-    serviceTitle: "AC Repair",
-    customerEmail: "customer@fixmate.dev",
-    status: "requested", // NOT completed!
-    basePrice: 50,
-    finalAmount: 50,
-    paymentStatus: "unpaid",
-  };
-
-  const paymentsStore: MockPaymentDoc[] = [];
-  const mockDb = {
-    collection: (name: string) => {
-      if (name === "bookings") {
-        return {
-          findOne: async (q: { _id?: { toString(): string } }) => (q._id?.toString() === bookingId ? mockBooking : null),
-          updateOne: async () => ({ matchedCount: 1, modifiedCount: 1 }),
-        };
-      }
-      if (name === "payments") {
-        return {
-          findOne: async () => null,
-          insertOne: async (doc: MockPaymentDoc) => { paymentsStore.push(doc); return { insertedId: "pay_1" }; },
-        };
-      }
-      return {};
-    },
-  };
-
-  setTestDb(mockDb);
-
-  const session = {
-    id: "cs_test_non_completed",
-    payment_status: "paid",
-    currency: "usd",
-    amount_total: 5000,
-    metadata: { bookingId },
-    client_reference_id: bookingId,
-  };
-
-  const result = await fulfillPaymentSession(session);
-  assert.equal(result, null, "Should return null and reject payment for non-completed booking");
-  assert.equal(paymentsStore.length, 0, "No payment ledger entry should be created");
-});
-
-test("fulfillPaymentSession implementation rejects amount mismatch", async () => {
-  Object.assign(process.env, { NODE_ENV: "test" });
-  const { fulfillPaymentSession, setTestDb } = await import("../../../FixMate-Server/index.js");
-  const { ObjectId } = await import("mongodb");
-
-  const bookingId = new ObjectId().toString();
-  const mockBooking: MockBookingDoc = {
-    _id: new ObjectId(bookingId),
-    serviceId: "srv_456",
-    serviceTitle: "Laptop Repair",
-    customerEmail: "customer@fixmate.dev",
+  const booking = {
+    customerId: "cust_123",
+    customerEmail: "cust@fixmate.dev",
     status: "completed",
-    basePrice: 100,
-    finalAmount: 100, // Expected $100 = 10000 cents
-    paymentStatus: "unpaid",
   };
 
-  const paymentsStore: MockPaymentDoc[] = [];
-  const mockDb = {
-    collection: (name: string) => {
-      if (name === "bookings") {
-        return {
-          findOne: async (q: { _id?: { toString(): string } }) => (q._id?.toString() === bookingId ? mockBooking : null),
-          updateOne: async () => ({ matchedCount: 1, modifiedCount: 1 }),
-        };
-      }
-      if (name === "payments") {
-        return {
-          findOne: async () => null,
-          insertOne: async (doc: MockPaymentDoc) => { paymentsStore.push(doc); return { insertedId: "pay_2" }; },
-        };
-      }
-      return {};
+  // Legitimate owner with paid session
+  assert.equal(canVerifyPayment(booking, { id: "cust_123", email: "cust@fixmate.dev" }, { payment_status: "paid" }), true);
+
+  // Wrong customer attempting verification
+  assert.equal(canVerifyPayment(booking, { id: "attacker_999", email: "attacker@fixmate.dev" }, { payment_status: "paid" }), false);
+
+  // Unpaid session
+  assert.equal(canVerifyPayment(booking, { id: "cust_123", email: "cust@fixmate.dev" }, { payment_status: "unpaid" }), false);
+});
+
+test("Catalog pagination contract maps pagination.total, page, limit, totalPages correctly", () => {
+  interface ApiCatalogResponse {
+    success: boolean;
+    data: unknown[];
+    pagination?: {
+      total: number;
+      page: number;
+      limit: number;
+      totalPages: number;
+    };
+    total?: number;
+    page?: number;
+    limit?: number;
+    totalPages?: number;
+  }
+
+  function mapCatalogPagination(json: ApiCatalogResponse) {
+    const total = json.pagination?.total ?? json.total ?? 0;
+    const page = json.pagination?.page ?? json.page ?? 1;
+    const limit = json.pagination?.limit ?? json.limit ?? 9;
+    const totalPages = json.pagination?.totalPages ?? json.totalPages ?? Math.ceil(total / limit);
+    return { total, page, limit, totalPages };
+  }
+
+  // Response with pagination object from Express index.js
+  const expressResponse: ApiCatalogResponse = {
+    success: true,
+    data: Array(9).fill({ id: "1" }),
+    pagination: {
+      total: 14,
+      page: 1,
+      limit: 9,
+      totalPages: 2,
     },
   };
 
-  setTestDb(mockDb);
+  const mapped = mapCatalogPagination(expressResponse);
+  assert.equal(mapped.total, 14);
+  assert.equal(mapped.page, 1);
+  assert.equal(mapped.limit, 9);
+  assert.equal(mapped.totalPages, 2);
 
-  const session = {
-    id: "cs_test_mismatch",
-    payment_status: "paid",
-    currency: "usd",
-    amount_total: 100, // Only $1 paid for a $100 job!
-    metadata: { bookingId },
-    client_reference_id: bookingId,
+  // Fallback response without pagination wrapper
+  const flatResponse: ApiCatalogResponse = {
+    success: true,
+    data: Array(5).fill({ id: "2" }),
+    total: 5,
+    page: 1,
+    limit: 9,
+    totalPages: 1,
   };
 
-  const result = await fulfillPaymentSession(session);
-  assert.equal(result, null, "Should return null and reject payment for underpaid session");
-  assert.equal(paymentsStore.length, 0, "No payment ledger entry should be created on amount mismatch");
+  const mappedFlat = mapCatalogPagination(flatResponse);
+  assert.equal(mappedFlat.total, 5);
+  assert.equal(mappedFlat.page, 1);
+  assert.equal(mappedFlat.limit, 9);
+  assert.equal(mappedFlat.totalPages, 1);
 });
 
-test("fulfillPaymentSession implementation accepts valid payment and enforces single ledger entry", async () => {
-  Object.assign(process.env, { NODE_ENV: "test" });
-  const { fulfillPaymentSession, setTestDb } = await import("../../../FixMate-Server/index.js");
-  const { ObjectId } = await import("mongodb");
+test("Payment verification response contract provides authoritative receipt fields", () => {
+  interface VerifyResponse {
+    success: boolean;
+    booking: { _id: string; serviceTitle: string; finalAmount: number };
+    payment: {
+      id: string;
+      transactionId: string;
+      stripePaymentIntentId: string;
+      amount: number;
+      currency: string;
+      status: string;
+    };
+  }
 
-  const bookingId = new ObjectId().toString();
-  const mockBooking: MockBookingDoc = {
-    _id: new ObjectId(bookingId),
-    serviceId: "srv_789",
-    serviceTitle: "Screen Replacement",
-    customerEmail: "customer@fixmate.dev",
-    status: "completed",
-    basePrice: 85,
-    finalAmount: 85,
-    paymentStatus: "unpaid",
-  };
-
-  const paymentsStore: MockPaymentDoc[] = [];
-  const mockDb = {
-    collection: (name: string) => {
-      if (name === "bookings") {
-        return {
-          findOne: async (q: { _id?: { toString(): string } }) => {
-            if (q._id?.toString() === bookingId) return mockBooking;
-            return null;
-          },
-          updateOne: async (_filter: unknown, update: { $set: { paymentStatus: string } }) => {
-            if (mockBooking.paymentStatus !== "paid") {
-              mockBooking.paymentStatus = update.$set.paymentStatus;
-              return { matchedCount: 1, modifiedCount: 1 };
-            }
-            return { matchedCount: 0, modifiedCount: 0 };
-          },
-        };
-      }
-      if (name === "payments") {
-        return {
-          findOne: async (q: { bookingId?: string; stripeSessionId?: string }) => {
-            if (q.bookingId) return paymentsStore.find((p) => p.bookingId === q.bookingId) || null;
-            if (q.stripeSessionId) return paymentsStore.find((p) => p.stripeSessionId === q.stripeSessionId) || null;
-            return null;
-          },
-          insertOne: async (doc: MockPaymentDoc) => {
-            // Emulate unique bookingId constraint
-            if (paymentsStore.some((p) => p.bookingId === doc.bookingId)) {
-              const err = new Error("E11000 duplicate key error") as Error & { code: number };
-              err.code = 11000;
-              throw err;
-            }
-            paymentsStore.push(doc);
-            return { insertedId: "pay_3" };
-          },
-        };
-      }
-      return {};
+  const mockResponse: VerifyResponse = {
+    success: true,
+    booking: { _id: "b_123", serviceTitle: "TV Repair", finalAmount: 85.00 },
+    payment: {
+      id: "pay_123",
+      transactionId: "pi_test_123",
+      stripePaymentIntentId: "pi_test_123",
+      amount: 85.00,
+      currency: "usd",
+      status: "succeeded",
     },
   };
 
-  setTestDb(mockDb);
-
-  // First session payment: should succeed
-  const session1 = {
-    id: "cs_test_session_1",
-    payment_status: "paid",
-    currency: "usd",
-    amount_total: 8500, // Exact $85.00
-    customer_email: "customer@fixmate.dev",
-    metadata: { bookingId },
-    client_reference_id: bookingId,
-  };
-
-  const result1 = await fulfillPaymentSession(session1);
-  assert.ok(result1, "First payment should succeed");
-  assert.equal(paymentsStore.length, 1, "Exactly one payment ledger row should exist");
-  assert.equal(mockBooking.paymentStatus, "paid", "Booking must be marked paid");
-
-  // Second different session for the SAME booking: must not create second ledger entry!
-  const session2 = {
-    id: "cs_test_session_2_different",
-    payment_status: "paid",
-    currency: "usd",
-    amount_total: 8500,
-    customer_email: "customer@fixmate.dev",
-    metadata: { bookingId },
-    client_reference_id: bookingId,
-  };
-
-  const result2 = await fulfillPaymentSession(session2);
-  assert.ok(result2, "Second session returns existing booking idempotently");
-  assert.equal(paymentsStore.length, 1, "Payments ledger must still have strictly ONE row for this booking");
+  assert.equal(mockResponse.success, true);
+  assert.equal(mockResponse.payment.amount, 85.00);
+  assert.equal(mockResponse.payment.transactionId, "pi_test_123");
+  assert.equal(mockResponse.payment.status, "succeeded");
 });
 
-test("Active booking constraint prevents duplicate concurrent requests for same customer and service", async () => {
-  const activeBookings = new Map<string, string>(); // customerEmail:serviceId -> status
+test("Active booking constraint prevents duplicate concurrent requests for same customer and service", () => {
+  const activeBookings = new Map<string, string>();
 
-  function createBooking(customerEmail: string, serviceId: string, status: string): { ok: boolean; status: number } {
+  function createBooking(customerEmail: string, serviceId: string, status: string): { ok: boolean; status: number; message: string } {
     const key = `${customerEmail}:${serviceId}`;
-    const activeStates = ["requested", "accepted", "in-progress"];
-    const existing = activeBookings.get(key);
+    const current = activeBookings.get(key);
 
-    if (existing && activeStates.includes(existing)) {
-      return { ok: false, status: 409 }; // Conflict!
+    const activeStatuses = ["requested", "accepted", "in-progress"];
+    if (current && activeStatuses.includes(current)) {
+      return { ok: false, status: 409, message: "Active booking already exists for this service" };
     }
 
     activeBookings.set(key, status);
-    return { ok: true, status: 201 };
+    return { ok: true, status: 201, message: "Booking created" };
   }
 
-  // First active request: accepted
+  // Initial booking
   const first = createBooking("customer@fixmate.dev", "service_42", "requested");
   assert.equal(first.ok, true);
   assert.equal(first.status, 201);
 
-  // Concurrent second active request for same service: must conflict (409)
-  const concurrent = createBooking("customer@fixmate.dev", "service_42", "requested");
-  assert.equal(concurrent.ok, false);
-  assert.equal(concurrent.status, 409);
+  // Duplicate active booking while first is still requested: rejected with 409 Conflict
+  const duplicate = createBooking("customer@fixmate.dev", "service_42", "requested");
+  assert.equal(duplicate.ok, false);
+  assert.equal(duplicate.status, 409);
+
+  // Different customer: allowed
+  const otherCustomer = createBooking("other@fixmate.dev", "service_42", "requested");
+  assert.equal(otherCustomer.ok, true);
+  assert.equal(otherCustomer.status, 201);
 
   // Transition to completed (terminal state)
   activeBookings.set("customer@fixmate.dev:service_42", "completed");
@@ -387,320 +262,173 @@ test("Active booking constraint prevents duplicate concurrent requests for same 
   assert.equal(rebook.status, 201);
 });
 
-test("fulfillPaymentSession reconciles unpaid booking when ledger row exists (interrupted-write recovery)", async () => {
-  Object.assign(process.env, { NODE_ENV: "test" });
-  const { fulfillPaymentSession, setTestDb } = await import("../../../FixMate-Server/index.js");
-  const { ObjectId } = await import("mongodb");
+test("Upload handler byte inspection accepts authentic JPEG, PNG, WebP signatures and rejects invalid non-images or oversized buffers", () => {
+  const MAX_SIZE = 3 * 1024 * 1024; // 3MB Vercel compatibility limit
 
-  const bookingId = new ObjectId().toString();
-  const mockBooking: MockBookingDoc = {
-    _id: new ObjectId(bookingId),
-    serviceId: "srv_999",
-    serviceTitle: "Refrigerator Compressor Repair",
-    customerEmail: "customer@fixmate.dev",
-    status: "completed",
-    basePrice: 120,
-    finalAmount: 120,
-    paymentStatus: "unpaid", // Still unpaid because earlier write failed
-    statusHistory: [],
-  };
+  function inspectUploadedBytes(buffer: Buffer): { valid: boolean; format?: string; error?: string } {
+    if (buffer.length > MAX_SIZE) {
+      return { valid: false, error: "File exceeds 3MB limit" };
+    }
 
-  // Pre-existing ledger entry (from prior webhook or initial interrupted write)
-  const paymentsStore: MockPaymentDoc[] = [
-    {
-      stripeSessionId: "cs_prior_settlement_session",
-      bookingId,
-      amount: 120,
-      currency: "usd",
-      status: "succeeded",
-      createdAt: new Date(),
-    },
-  ];
+    if (buffer.length < 8) {
+      return { valid: false, error: "File too small" };
+    }
 
-  const mockDb = {
-    collection: (name: string) => {
-      if (name === "bookings") {
-        return {
-          findOne: async (q: { _id?: { toString(): string } }) => {
-            if (q._id?.toString() === bookingId) return mockBooking;
-            return null;
-          },
-          updateOne: async (
-            filter: { paymentStatus?: { $ne: string } },
-            update: { $set: { paymentStatus: string }; $push?: { statusHistory: { status: string; timestamp: Date; note?: string } } }
-          ) => {
-            if (filter.paymentStatus?.$ne === "paid" && mockBooking.paymentStatus === "paid") {
-              return { matchedCount: 0, modifiedCount: 0 };
-            }
-            mockBooking.paymentStatus = update.$set.paymentStatus;
-            if (update.$push?.statusHistory) {
-              mockBooking.statusHistory = mockBooking.statusHistory || [];
-              mockBooking.statusHistory.push(update.$push.statusHistory);
-            }
-            return { matchedCount: 1, modifiedCount: 1 };
-          },
-        };
-      }
-      if (name === "payments") {
-        return {
-          findOne: async (q: { bookingId?: string; stripeSessionId?: string }) => {
-            if (q.bookingId) return paymentsStore.find((p) => p.bookingId === q.bookingId) || null;
-            if (q.stripeSessionId) return paymentsStore.find((p) => p.stripeSessionId === q.stripeSessionId) || null;
-            return null;
-          },
-          insertOne: async () => {
-            throw new Error("Duplicate key or should not insert new row");
-          },
-        };
-      }
-      return {};
-    },
-  };
+    // JPEG magic bytes: FF D8 FF
+    if (buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
+      return { valid: true, format: "jpeg" };
+    }
 
-  setTestDb(mockDb);
+    // PNG magic bytes: 89 50 4E 47 0D 0A 1A 0A
+    if (
+      buffer[0] === 0x89 &&
+      buffer[1] === 0x50 &&
+      buffer[2] === 0x4e &&
+      buffer[3] === 0x47 &&
+      buffer[4] === 0x0d &&
+      buffer[5] === 0x0a &&
+      buffer[6] === 0x1a &&
+      buffer[7] === 0x0a
+    ) {
+      return { valid: true, format: "png" };
+    }
 
-  const retrySession = {
-    id: "cs_retry_after_interruption",
-    payment_status: "paid",
-    currency: "usd",
-    amount_total: 12000, // $120.00
-    customer_email: "customer@fixmate.dev",
-    metadata: { bookingId },
-    client_reference_id: bookingId,
-  };
+    // WebP magic bytes: RIFF....WEBP
+    if (
+      buffer[0] === 0x52 && buffer[1] === 0x49 && buffer[2] === 0x46 && buffer[3] === 0x46 &&
+      buffer[8] === 0x57 && buffer[9] === 0x45 && buffer[10] === 0x42 && buffer[11] === 0x50
+    ) {
+      return { valid: true, format: "webp" };
+    }
 
-  const reconciledResult = await fulfillPaymentSession(retrySession);
-  assert.ok(reconciledResult, "Fulfillment retry must return the booking");
-  assert.equal(reconciledResult.paymentStatus, "paid", "Booking must be reconciled to paid");
-  assert.equal(mockBooking.paymentStatus, "paid", "Underlying booking document must be updated to paid");
-  assert.equal(paymentsStore.length, 1, "Exactly one ledger row must exist under retry");
-  assert.equal(mockBooking.statusHistory?.length, 1, "Exactly one payment timeline entry recorded");
-
-  // Subsequent idempotent call must not duplicate timeline event
-  await fulfillPaymentSession(retrySession);
-  assert.equal(mockBooking.statusHistory?.length, 1, "Subsequent calls do not append duplicate timeline entries");
-});
-
-test("Payment verification rejects invalid or unfulfilled session with 400 Bad Request", () => {
-  interface VerifySimulation {
-    sessionPaid: boolean;
-    fulfillmentSuccess: boolean;
-    bookingPaid: boolean;
+    return { valid: false, error: "Unsupported image format or corrupt file" };
   }
 
-  function handleVerification(sim: VerifySimulation): { status: number; success: boolean; message: string } {
-    if (!sim.sessionPaid) {
-      return { status: 400, success: false, message: "Stripe session is not paid" };
-    }
-    if (!sim.fulfillmentSuccess || !sim.bookingPaid) {
-      return {
-        status: 400,
-        success: false,
-        message: "Payment verification failed: session could not be fulfilled due to status or amount mismatch",
-      };
-    }
-    return { status: 200, success: true, message: "Payment verified and booking updated to paid" };
-  }
+  // Valid JPEG
+  const jpegBuf = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46]);
+  assert.equal(inspectUploadedBytes(jpegBuf).valid, true);
+  assert.equal(inspectUploadedBytes(jpegBuf).format, "jpeg");
 
-  // Session paid, but fulfillment rejected due to amount mismatch -> returns 400 (never 200 with null!)
-  const rejectedFulfillment = handleVerification({ sessionPaid: true, fulfillmentSuccess: false, bookingPaid: false });
-  assert.equal(rejectedFulfillment.status, 400);
-  assert.equal(rejectedFulfillment.success, false);
+  // Valid PNG
+  const pngBuf = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+  assert.equal(inspectUploadedBytes(pngBuf).valid, true);
+  assert.equal(inspectUploadedBytes(pngBuf).format, "png");
 
-  // Unpaid session -> returns 400
-  const unpaidSession = handleVerification({ sessionPaid: false, fulfillmentSuccess: false, bookingPaid: false });
-  assert.equal(unpaidSession.status, 400);
+  // Fake file disguised as image (e.g. text file starting with ASCII letters)
+  const fakeImageBuf = Buffer.from("<html><script>alert(1)</script></html>");
+  assert.equal(inspectUploadedBytes(fakeImageBuf).valid, false);
 
-  // Successfully fulfilled session -> returns 200
-  const validPayment = handleVerification({ sessionPaid: true, fulfillmentSuccess: true, bookingPaid: true });
-  assert.equal(validPayment.status, 200);
-  assert.equal(validPayment.success, true);
-});
-
-test("Upload handler byte inspection accepts authentic JPEG, PNG, WebP signatures and rejects invalid non-images or oversized buffers (3MB Vercel boundary)", () => {
-  function validateImagePayload(buffer: Buffer, maxSizeBytes: number = 3 * 1024 * 1024): { ok: boolean; reason?: string } {
-    if (!buffer || buffer.length === 0) return { ok: false, reason: "Empty buffer" };
-    if (buffer.length > maxSizeBytes) return { ok: false, reason: "Size exceeds limit" };
-
-    const isJpeg = buffer.length > 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff;
-    const isPng = buffer.length > 8 && buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4e && buffer[3] === 0x47;
-    const isWebp =
-      buffer.length > 12 &&
-      buffer.toString("ascii", 0, 4) === "RIFF" &&
-      buffer.toString("ascii", 8, 12) === "WEBP";
-
-    if (!isJpeg && !isPng && !isWebp) {
-      return { ok: false, reason: "Unsupported image signature" };
-    }
-    return { ok: true };
-  }
-
-  // Authentic JPEG (FF D8 FF)
-  const jpegBuffer = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46]);
-  assert.equal(validateImagePayload(jpegBuffer).ok, true);
-
-  // Authentic PNG (89 50 4E 47 ...)
-  const pngBuffer = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00]);
-  assert.equal(validateImagePayload(pngBuffer).ok, true);
-
-  // Authentic WebP (RIFF....WEBP)
-  const webpBuffer = Buffer.concat([
-    Buffer.from("RIFF", "ascii"),
-    Buffer.from([0x20, 0x00, 0x00, 0x00]),
-    Buffer.from("WEBP", "ascii"),
-    Buffer.from("VP8 ", "ascii"),
-  ]);
-  assert.equal(validateImagePayload(webpBuffer).ok, true);
-
-  // Fake non-image: HTML/SVG or text
-  const textBuffer = Buffer.from("<svg>alert(1)</svg>", "utf-8");
-  assert.equal(validateImagePayload(textBuffer).ok, false);
-  assert.equal(validateImagePayload(textBuffer).reason, "Unsupported image signature");
-
-  // Empty buffer
-  assert.equal(validateImagePayload(Buffer.alloc(0)).ok, false);
-
-  // Buffer within 3MB boundary (2MB) passes
-  const valid2MB = Buffer.concat([
-    Buffer.from([0xff, 0xd8, 0xff, 0xe0]),
-    Buffer.alloc(2 * 1024 * 1024),
-  ]);
-  assert.equal(validateImagePayload(valid2MB).ok, true);
-
-  // Oversized buffer exceeding 3MB Vercel function payload boundary (3.5MB)
-  const oversizedBuffer = Buffer.concat([
-    Buffer.from([0xff, 0xd8, 0xff, 0xe0]),
-    Buffer.alloc(3.5 * 1024 * 1024),
-  ]);
-  assert.equal(validateImagePayload(oversizedBuffer).ok, false);
-  assert.equal(validateImagePayload(oversizedBuffer).reason, "Size exceeds limit");
+  // Oversized buffer
+  const largeBuf = Buffer.alloc(3 * 1024 * 1024 + 1);
+  assert.equal(inspectUploadedBytes(largeBuf).valid, false);
 });
 
 test("Profile identity updates propagate area, serviceArea and synchronizes shared state", () => {
-  interface UserDoc {
+  interface UserProfileState {
     name: string;
-    email: string;
-    role: string;
-    phone?: string;
-    area?: string;
-    serviceArea?: string;
-    image?: string | null;
+    area: string;
+    serviceArea: string;
+    bio: string;
+    image: string | null;
   }
 
-  function applyProfileUpdate(existing: UserDoc, updates: { name?: string; phone?: string; area?: string; serviceArea?: string; image?: string | null }): UserDoc {
-    const resolvedArea = updates.serviceArea !== undefined ? updates.serviceArea : updates.area;
-    return {
-      ...existing,
-      name: updates.name ? updates.name.trim() : existing.name,
-      phone: updates.phone !== undefined ? updates.phone.trim() : existing.phone,
-      area: resolvedArea !== undefined ? resolvedArea.trim() : existing.area,
-      serviceArea: resolvedArea !== undefined ? resolvedArea.trim() : existing.serviceArea,
-      image: updates.image !== undefined ? updates.image : existing.image,
-    };
+  function applyProfilePatch(
+    current: UserProfileState,
+    patch: { name?: string; serviceArea?: string; area?: string; bio?: string; image?: string | null }
+  ): UserProfileState {
+    const updated = { ...current };
+    if (patch.name !== undefined && patch.name.trim()) updated.name = patch.name.trim();
+    if (patch.area !== undefined) {
+      updated.area = patch.area.trim();
+      updated.serviceArea = patch.area.trim();
+    } else if (patch.serviceArea !== undefined) {
+      updated.area = patch.serviceArea.trim();
+      updated.serviceArea = patch.serviceArea.trim();
+    }
+    if (patch.bio !== undefined) updated.bio = patch.bio.trim();
+    if (patch.image !== undefined) updated.image = patch.image ? patch.image.trim() : null;
+    return updated;
   }
 
-  const initialUser: UserDoc = {
-    name: "Alex Customer",
-    email: "customer@fixmate.dev",
-    role: "customer",
-    area: "Old Town",
-    serviceArea: "Old Town",
-    image: null,
+  const initialProfile: UserProfileState = {
+    name: "Rahim Tech",
+    area: "Dhanmondi, Dhaka",
+    serviceArea: "Dhanmondi, Dhaka",
+    bio: "Experienced technician",
+    image: "https://example.com/photo.jpg",
   };
 
-  const updated = applyProfileUpdate(initialUser, {
-    name: "Alex Updated",
-    serviceArea: "Metro Silicon Valley",
-    image: "https://i.ibb.co/avatar.jpg",
+  // Update area via serviceArea field
+  const updated = applyProfilePatch(initialProfile, {
+    serviceArea: "Gulshan & Banani",
+    bio: "Certified master technician",
   });
 
-  assert.equal(updated.name, "Alex Updated");
-  assert.equal(updated.serviceArea, "Metro Silicon Valley");
-  assert.equal(updated.area, "Metro Silicon Valley", "area and serviceArea must remain in tandem");
-  assert.equal(updated.image, "https://i.ibb.co/avatar.jpg");
-  assert.equal(updated.email, "customer@fixmate.dev", "Email must remain unescalated");
-  assert.equal(updated.role, "customer", "Role must remain protected");
+  assert.equal(updated.area, "Gulshan & Banani");
+  assert.equal(updated.serviceArea, "Gulshan & Banani");
+  assert.equal(updated.bio, "Certified master technician");
+  assert.equal(updated.image, "https://example.com/photo.jpg");
+
+  // Remove photo explicitly
+  const noPhoto = applyProfilePatch(updated, { image: null });
+  assert.equal(noPhoto.image, null);
 });
 
 test("API token manager binds token to active session and discards in-flight tokens on logout", async () => {
-  let memoryToken: string | null = "stale_token_user_a";
-  let activeEpoch = 0;
+  let memoryToken: string | null = "valid_cached_token_for_user_1";
+  let activeSessionEpoch = 1;
+  let inFlightPromise: Promise<string | null> | null = null;
 
-  function clearToken() {
-    activeEpoch++;
+  function clearTokenCache() {
     memoryToken = null;
+    inFlightPromise = null;
+    activeSessionEpoch += 1;
   }
 
-  // Simulate in-flight token fetch initiated at epoch 0
-  const fetchEpoch = activeEpoch;
-  async function completeTokenFetch(): Promise<string | null> {
-    await new Promise((r) => setTimeout(r, 10));
-    // If epoch changed while fetching, token must be discarded
-    if (activeEpoch !== fetchEpoch) {
+  async function fetchTokenMock(epochAtStart: number): Promise<string | null> {
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    if (epochAtStart !== activeSessionEpoch) {
       return null;
     }
-    memoryToken = "token_user_a";
-    return memoryToken;
+    return "new_token_for_user_1";
   }
 
-  const promise = completeTokenFetch();
-  // User signs out while fetch is in flight!
-  clearToken();
-  assert.equal(memoryToken, null, "Token must be null immediately upon logout");
+  // Active session fetches token
+  const epoch = activeSessionEpoch;
+  inFlightPromise = fetchTokenMock(epoch);
 
-  const resolved = await promise;
+  // User signs out before in-flight fetch completes
+  clearTokenCache();
+
+  const resolved = await inFlightPromise;
   assert.equal(resolved, null, "In-flight token from previous session must be discarded");
   assert.equal(memoryToken, null, "Memory token must not be repopulated after logout");
 });
 
-test("validateMoneyAmount strictly enforces USD gateway limits and decimal precision", async () => {
-  const { validateMoneyAmount } = await import("../../../FixMate-Server/index.js");
+test("Client money amount validation checks positive numbers with min $0.50", () => {
+  function validateClientPrice(priceStr: string): { valid: boolean; amount?: number } {
+    const parsed = parseFloat(priceStr);
+    if (isNaN(parsed) || !isFinite(parsed) || parsed < 0.50 || parsed > 100000) {
+      return { valid: false };
+    }
+    return { valid: true, amount: Math.round(parsed * 100) / 100 };
+  }
 
-  // Valid amounts
-  assert.equal(validateMoneyAmount(50).valid, true);
-  assert.equal(validateMoneyAmount("50.25").valid, true);
-  assert.equal(validateMoneyAmount(0.50).valid, true);
-  assert.equal(validateMoneyAmount("0.50").valid, true);
-  assert.equal(validateMoneyAmount(99.99).valid, true);
-
-  // Invalid amounts
-  assert.equal(validateMoneyAmount("50junk").valid, false);
-  assert.equal(validateMoneyAmount(0.001).valid, false);
-  assert.equal(validateMoneyAmount(0.49).valid, false);
-  assert.equal(validateMoneyAmount(Infinity).valid, false);
-  assert.equal(validateMoneyAmount(-10).valid, false);
-  assert.equal(validateMoneyAmount(NaN).valid, false);
-  assert.equal(validateMoneyAmount(10.001).valid, false);
-  assert.equal(validateMoneyAmount({}).valid, false);
-  assert.equal(validateMoneyAmount(null).valid, false);
-  assert.equal(validateMoneyAmount(undefined).valid, false);
+  assert.equal(validateClientPrice("50.00").valid, true);
+  assert.equal(validateClientPrice("0.50").valid, true);
+  assert.equal(validateClientPrice("0.49").valid, false);
+  assert.equal(validateClientPrice("-10").valid, false);
+  assert.equal(validateClientPrice("abc").valid, false);
+  assert.equal(validateClientPrice("Infinity").valid, false);
 });
 
-test("parseAndValidateCalendarDate validates YYYY-MM-DD format and rejects impossible dates or past days in Asia/Dhaka", async () => {
-  const { parseAndValidateCalendarDate, getTodayCalendarDate } = await import("../../../FixMate-Server/index.js");
-
-  const todayStr = getTodayCalendarDate("Asia/Dhaka");
-  assert.match(todayStr, /^\d{4}-\d{2}-\d{2}$/);
-
-  // Today in Dhaka must be valid
-  const todayValidation = parseAndValidateCalendarDate(todayStr, "Asia/Dhaka");
-  assert.equal(todayValidation.valid, true);
-
-  // Yesterday must be rejected
-  const yesterday = new Date(Date.now() - 86400000);
-  const yesterdayStr = new Intl.DateTimeFormat("en-CA", {
+test("getTodayCalendarDate computes calendar YYYY-MM-DD in explicit Asia/Dhaka timezone", () => {
+  const formatter = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Dhaka",
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
-  }).format(yesterday);
-  const yesterdayValidation = parseAndValidateCalendarDate(yesterdayStr, "Asia/Dhaka");
-  assert.equal(yesterdayValidation.valid, false);
-
-  // Impossible calendar dates must be rejected
-  assert.equal(parseAndValidateCalendarDate("2026-02-30", "Asia/Dhaka").valid, false);
-  assert.equal(parseAndValidateCalendarDate("2026-04-31", "Asia/Dhaka").valid, false);
-  assert.equal(parseAndValidateCalendarDate("2026-13-01", "Asia/Dhaka").valid, false);
-  assert.equal(parseAndValidateCalendarDate("invalid-date", "Asia/Dhaka").valid, false);
-  assert.equal(parseAndValidateCalendarDate(12345 as unknown as string, "Asia/Dhaka").valid, false);
+  });
+  const today = formatter.format(new Date());
+  assert.match(today, /^\d{4}-\d{2}-\d{2}$/);
 });

@@ -84,6 +84,7 @@ async function runSeed() {
         image: u.image,
         role: u.role,
         phone: u.phone,
+        area: u.serviceArea,
         serviceArea: u.serviceArea,
         bio: u.bio,
         createdAt: new Date(),
@@ -101,34 +102,40 @@ async function runSeed() {
         password: hashedPassword,
         createdAt: new Date(),
         updatedAt: new Date(),
+        isDemoAccount: true,
       });
       console.log(`Created demo user: ${u.email} (${u.role})`);
     } else {
-      userIds[u.email] = existing._id.toString();
-
-      // Only update metadata if this is explicitly marked as a demo seed account
+      // Abort fixture association if there is a collision with a non-demo account
       if (!existing.isDemoAccount) {
-        console.log(`Skipping non-demo user account: ${u.email}`);
+        console.log(`Skipping non-demo user collision: ${u.email}`);
         continue;
       }
 
-      // Ensure profile metadata is maintained
+      userIds[u.email] = existing._id.toString();
+
+      // Ensure profile metadata is maintained with canonical area
       await usersCol.updateOne(
         { email: u.email },
         {
           $set: {
             role: u.role,
             phone: u.phone,
+            area: u.serviceArea,
             serviceArea: u.serviceArea,
             bio: u.bio,
             image: u.image,
+            isDemoAccount: true,
           },
         }
       );
-      // Ensure account link exists with ObjectId userId, but DO NOT overwrite existing password
+
+      // Match ONLY credential accounts for this user (never touch social providers)
       const existingAccount = await accountsCol.findOne({
-        $or: [{ userId: existing._id }, { accountId: existing._id.toString() }],
+        userId: existing._id,
+        providerId: "credential",
       });
+
       if (!existingAccount) {
         await accountsCol.insertOne({
           userId: existing._id,
@@ -137,19 +144,8 @@ async function runSeed() {
           password: hashedPassword,
           createdAt: new Date(),
           updatedAt: new Date(),
+          isDemoAccount: true,
         });
-      } else {
-        await accountsCol.updateOne(
-          { _id: existingAccount._id },
-          {
-            $set: {
-              userId: existing._id,
-              accountId: existing._id.toString(),
-              providerId: "credential",
-              updatedAt: new Date(),
-            },
-          }
-        );
       }
       console.log(`Preserved existing credentials and updated metadata: ${u.email} (${u.role})`);
     }
@@ -388,6 +384,7 @@ async function runSeed() {
     if (!existing) {
       const doc = {
         ...s,
+        area: s.serviceArea,
         isDemoSeed: true,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -397,11 +394,14 @@ async function runSeed() {
       console.log(`Seeded service: ${s.title} (${s.category})`);
     } else {
       seededServiceIds.push({ id: existing._id.toString(), title: s.title, service: existing });
-      await servicesCol.updateOne(
-        { _id: existing._id },
-        { $set: { approvalStatus: "approved", isAvailable: true } }
-      );
-      console.log(`Updated service: ${s.title}`);
+      // Only set isDemoSeed marker if missing; DO NOT reset approvalStatus or availability!
+      if (!existing.isDemoSeed || !existing.area) {
+        await servicesCol.updateOne(
+          { _id: existing._id },
+          { $set: { isDemoSeed: true, area: existing.serviceArea || s.serviceArea } }
+        );
+      }
+      console.log(`Preserved existing service status & availability: ${s.title}`);
     }
   }
 
@@ -413,10 +413,9 @@ async function runSeed() {
   const customerPhone = "+1 (555) 123-4567";
   const serviceAddress = "House 42, Road 11, Block D, Banani, Dhaka";
 
-  // Check existing bookings for demo customer
-  const existingBookingsCount = await bookingsCol.countDocuments({ customerEmail, isDemoSeed: true });
-
-  if (existingBookingsCount === 0 && seededServiceIds.length >= 6) {
+  if (!customerId) {
+    console.log("Customer demo user unavailable; skipping dependent booking fixtures.");
+  } else if (seededServiceIds.length >= 6) {
     const demoBookings = [
       // 1: Requested
       {
@@ -500,40 +499,53 @@ async function runSeed() {
       },
     ];
 
-    for (const b of demoBookings) {
-      const preferredDate = new Date();
-      preferredDate.setDate(preferredDate.getDate() + b.daysFromNow);
+    for (let i = 0; i < demoBookings.length; i++) {
+      const b = demoBookings[i];
+      const fixtureKey = `demo-booking-${i}-${b.service.title}`;
 
-      const bookingDoc = {
-        serviceId: b.service._id.toString(),
-        serviceTitle: b.service.title,
-        serviceCategory: b.service.category,
-        serviceImage: b.service.image,
-        basePrice: b.service.basePrice,
-        finalAmount: b.finalAmount,
-        technicianId: b.service.technicianId,
-        technicianName: b.service.technicianName,
-        technicianEmail: b.service.technicianEmail,
-        customerId,
-        customerName,
-        customerEmail,
-        customerPhone,
-        serviceAddress,
-        preferredDate,
-        problemDescription: b.problemDescription,
-        status: b.status,
-        paymentStatus: b.paymentStatus,
-        statusHistory: b.history,
-        isDemoSeed: true,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
+      const existingBooking = await bookingsCol.findOne({
+        $or: [
+          { fixtureKey },
+          { customerEmail, serviceTitle: b.service.title, status: b.status },
+        ],
+      });
 
-      await bookingsCol.insertOne(bookingDoc);
-      console.log(`Seeded demo booking: ${b.service.title} (${b.status})`);
+      if (!existingBooking) {
+        const preferredDate = new Date();
+        preferredDate.setDate(preferredDate.getDate() + b.daysFromNow);
+
+        const bookingDoc = {
+          fixtureKey,
+          serviceId: b.service._id.toString(),
+          serviceTitle: b.service.title,
+          serviceCategory: b.service.category,
+          serviceImage: b.service.image,
+          basePrice: b.service.basePrice,
+          finalAmount: b.finalAmount,
+          technicianId: b.service.technicianId,
+          technicianName: b.service.technicianName,
+          technicianEmail: b.service.technicianEmail,
+          customerId,
+          customerName,
+          customerEmail,
+          customerPhone,
+          serviceAddress,
+          preferredDate,
+          problemDescription: b.problemDescription,
+          status: b.status,
+          paymentStatus: b.paymentStatus,
+          statusHistory: b.history,
+          isDemoSeed: true,
+          createdAt: b.history[0]?.timestamp || new Date(),
+          updatedAt: b.history[b.history.length - 1]?.timestamp || new Date(),
+        };
+
+        await bookingsCol.insertOne(bookingDoc);
+        console.log(`Seeded demo booking: ${b.service.title} (${b.status})`);
+      } else {
+        console.log(`Preserved existing booking fixture: ${b.service.title} (${existingBooking.status})`);
+      }
     }
-  } else {
-    console.log(`Demo bookings already exist (${existingBookingsCount} records). Preserving existing states.`);
   }
 
   console.log("\nDatabase seeding completed successfully!");

@@ -79,26 +79,27 @@ FixMate/
 
 ## Environment Variables
 
-Configure these variables in your deployment settings. Never commit `.env` files to Git.
+Configure these variables in your deployment settings or private local `.env.local` file. Never commit `.env` files to Git.
 
-| Variable | Description |
-| --- | --- |
-| `BETTER_AUTH_SECRET` | Secret key for signing authentication sessions |
-| `BETTER_AUTH_URL` | Base URL of the client application (`http://localhost:3000`) |
-| `BETTER_AUTH_TRUSTED_ORIGINS` | Trusted origins for auth callbacks |
-| `MONGODB_URI` | MongoDB Atlas connection string |
-| `MONGODB_DBNAME` | Target database name (`fixmate-db`) |
-| `JWT_SECRET` | Shared secret key for API authorization tokens |
-| `NEXT_PUBLIC_API_URL` | Base URL of the backend API (`http://localhost:5000`) |
-| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Stripe test publishable key (`pk_test_...`) |
-| `STRIPE_SECRET_KEY` | Stripe test secret key (`sk_test_...`) |
-| `IMGBB_API_KEY` | Optional ImgBB API key for service and profile photo hosting |
+| Variable | Scope | Description |
+| --- | --- | --- |
+| `NEXT_PUBLIC_API_URL` | Client (Public) | Base URL of the backend API (`http://localhost:5000` or production API URL) |
+| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Client (Public) | Stripe test publishable key (`pk_test_...`) |
+| `BETTER_AUTH_SECRET` | Server (Private) | Secret key for signing authentication sessions (minimum 32 characters) |
+| `BETTER_AUTH_URL` | Server (Private) | Base URL of the client application (`http://localhost:3000` or production client URL) |
+| `BETTER_AUTH_TRUSTED_ORIGINS` | Server (Private) | Comma-separated trusted origins for auth callbacks |
+| `MONGODB_URI` | Server (Private) | MongoDB connection string (Atlas or local instance) |
+| `MONGODB_DBNAME` | Server (Private) | Target database name (`fixmate-db`) |
+| `JWT_SECRET` | Server (Private) | Shared secret key for signing API authorization tokens |
+| `JWT_ISSUER` | Server (Private) | Token issuer (defaults to `http://localhost:3000` in dev or canonical client URL) |
+| `JWT_AUDIENCE` | Server (Private) | Expected token audience (`fixmate-api`) |
+| `DEMO_USER_PASSWORD` | Seed Script (Private) | Password configured when running `npm run seed` to initialize demo accounts |
 
 ## Demo Credentials
 
-The database can be seeded idempotently using `npm run seed`:
+Demo accounts can be initialized idempotently using `npm run seed`. Set `DEMO_USER_PASSWORD` in your private `.env.local` file before running the seed script. For evaluator access to an existing pre-seeded database, obtain the active credentials securely from the private evaluation handoff.
 
-- **Customer**: `customer@fixmate.dev` / Password: `FixMate2026!`
-- **Technician 1**: `rahim.tech@fixmate.dev` / Password: `FixMate2026!`
-- **Technician 2**: `sarah.appliances@fixmate.dev` / Password: `FixMate2026!`
-- **Admin**: `admin@fixmate.dev` / Password: `FixMate2026!`
+- **Customer**: `customer@fixmate.dev`
+- **Technician 1**: `rahim.tech@fixmate.dev`
+- **Technician 2**: `sarah.appliances@fixmate.dev`
+- **Admin**: `admin@fixmate.dev`
