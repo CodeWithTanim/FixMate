@@ -16,11 +16,366 @@
   --danger-surface: #fef2f2;
 }
 
+.dark {
+  --canvas: #081414;
+  --surface: #0E2020;
+  --ink: #EEF8F6;
+  --muted: #8EA8A5;
+  --petrol: #05191B;
+  --petrol-dark: #031011;
+  --jade: #1E8E82;
+  --jade-hover: #26ab9d;
+  --amber: #F4B740;
+  --amber-hover: #d99f30;
+  --border: #1A3937;
+  --danger: #ef4444;
+  --danger-surface: #2d1215;
+  color-scheme: dark;
+}
+
 body {
   color: var(--ink);
   background-color: var(--canvas);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   min-height: 100vh;
+}
+
+/* -------------------------------------------------------------
+   DARK MODE COMPREHENSIVE STYLING
+   ------------------------------------------------------------- */
+
+/* 1. Surfaces & Canvases */
+.dark body,
+.dark .bg-canvas {
+  background-color: #081414 !important;
+  color: #EEF8F6;
+}
+
+.dark .bg-white {
+  background-color: #0E2020 !important;
+}
+
+.dark .bg-\[\#F6F5EF\] {
+  background-color: #081414 !important;
+}
+
+.dark .bg-\[\#F6F5EF\]\/95 {
+  background-color: rgba(8, 20, 20, 0.95) !important;
+}
+
+.dark .bg-\[\#F6F5EF\]\/60 {
+  background-color: rgba(8, 20, 20, 0.6) !important;
+}
+
+.dark .bg-white\/95 {
+  background-color: rgba(14, 32, 32, 0.95) !important;
+}
+
+.dark .bg-white\/90 {
+  background-color: rgba(14, 32, 32, 0.9) !important;
+}
+
+.dark .bg-white\/80 {
+  background-color: rgba(14, 32, 32, 0.8) !important;
+}
+
+.dark .bg-\[\#FAFAF7\] {
+  background-color: #0A1919 !important;
+}
+
+.dark .bg-\[\#F4F4EE\] {
+  background-color: #0F2424 !important;
+}
+
+.dark .bg-\[\#EEF2F6\],
+.dark .bg-slate-50,
+.dark .bg-gray-50 {
+  background-color: #0A1919 !important;
+}
+
+.dark .bg-slate-100,
+.dark .bg-gray-100 {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* 2. Bento Category Cards in Dark Mode */
+.dark .bg-\[\#ECEBE4\] { background-color: #102424 !important; }
+.dark .bg-\[\#DDF0FC\] { background-color: #0A2233 !important; }
+.dark .bg-\[\#FEF9C3\] { background-color: #26230E !important; }
+.dark .bg-\[\#F5ECF7\] { background-color: #231429 !important; }
+.dark .bg-\[\#E2F7EB\] { background-color: #0D281E !important; }
+.dark .bg-\[\#FEEADB\] { background-color: #291811 !important; }
+.dark .bg-\[\#FDE2DF\] { background-color: #2A1217 !important; }
+
+/* 3. Borders & Dividers */
+.dark .border-\[\#DCE5DF\],
+.dark .border-\[\#DCE5DF\]\/70,
+.dark .border-\[\#DCE5DF\]\/60,
+.dark .border-\[\#DCE5DF\]\/40,
+.dark .border-\[\#E3E8E3\],
+.dark .border-slate-200,
+.dark .border-gray-200 {
+  border-color: #1A3937 !important;
+}
+
+.dark .divide-\[\#DCE5DF\] > :not([hidden]) ~ :not([hidden]) {
+  border-color: #1A3937 !important;
+}
+
+/* 4. Text Contrast Overrides */
+.dark .text-\[\#152C2B\] {
+  color: #EEF8F6 !important;
+}
+
+.dark .text-slate-900,
+.dark .text-slate-800,
+.dark .text-gray-900,
+.dark .text-gray-800 {
+  color: #EEF8F6 !important;
+}
+
+.dark .text-\[\#526564\] {
+  color: #8EA8A5 !important;
+}
+
+.dark .text-slate-600,
+.dark .text-slate-500,
+.dark .text-gray-600,
+.dark .text-gray-500 {
+  color: #8EA8A5 !important;
+}
+
+.dark .text-slate-400,
+.dark .text-gray-400 {
+  color: #627E7B !important;
+}
+
+/* Explicit white text on colored buttons / hero banners MUST remain crisp white */
+.dark .text-white {
+  color: #ffffff !important;
+}
+
+/* Theme Toggle Button - Guaranteed high-visibility contrast */
+.theme-toggle-btn {
+  background-color: #FFFFFF !important;
+  border-color: #DCE5DF !important;
+  color: #0B3638 !important;
+}
+.theme-toggle-btn svg {
+  color: #0B3638 !important;
+  stroke: #0B3638 !important;
+}
+.theme-toggle-btn:hover {
+  background-color: #F0F4F2 !important;
+  border-color: #18756B !important;
+}
+
+.dark .theme-toggle-btn {
+  background-color: #143230 !important;
+  border-color: #24504D !important;
+  color: #F4B740 !important;
+  box-shadow: 0 0 12px rgba(244, 183, 64, 0.25) !important;
+}
+.dark .theme-toggle-btn svg {
+  color: #F4B740 !important;
+  stroke: #F4B740 !important;
+}
+.dark .theme-toggle-btn:hover {
+  background-color: #1B4240 !important;
+  border-color: #387672 !important;
+  box-shadow: 0 0 16px rgba(244, 183, 64, 0.4) !important;
+}
+
+/* Fix high-contrast inverted dark tones in banners/cards */
+.dark .text-rose-950 {
+  color: #FECDD3 !important;
+}
+.dark .text-rose-900,
+.dark .text-rose-900\/80 {
+  color: #FDA4AF !important;
+}
+.dark .text-amber-900 {
+  color: #FDE68A !important;
+}
+
+/* 5. Interactive Form Inputs */
+.dark input:not([type="checkbox"]):not([type="radio"]),
+.dark textarea,
+.dark select {
+  background-color: #061313 !important;
+  color: #EEF8F6 !important;
+  border-color: #1A3937 !important;
+}
+
+.dark input:disabled,
+.dark textarea:disabled {
+  background-color: #0B1A19 !important;
+  color: #8EA8A5 !important;
+  opacity: 0.8;
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: #55726F !important;
+}
+
+/* 6. Tables & Lists */
+.dark thead tr {
+  background-color: #061313 !important;
+}
+
+.dark thead th {
+  color: #8EA8A5 !important;
+}
+
+.dark tbody tr:hover {
+  background-color: #122827 !important;
+}
+
+/* 7. Hover States */
+.dark .hover\:bg-\[\#F6F5EF\]:hover {
+  background-color: #122827 !important;
+}
+
+.dark .hover\:bg-\[\#DCE5DF\]:hover,
+.dark .hover\:bg-\[\#DCE5DF\]\/50:hover,
+.dark .hover\:bg-\[\#DCE5DF\]\/40:hover,
+.dark .hover\:bg-slate-50:hover {
+  background-color: #1A3937 !important;
+}
+
+/* 8. Marquee Fade Overlays */
+.dark .from-\[\#F6F5EF\] {
+  --tw-gradient-from: #081414 !important;
+  --tw-gradient-to: rgba(8, 20, 20, 0) !important;
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
+}
+
+/* 9. Status Badges & Chips */
+/* Emerald (Approved, Completed, Active) */
+.dark .bg-emerald-50,
+.dark .bg-emerald-50\/50,
+.dark .bg-emerald-50\/40 {
+  background-color: rgba(16, 185, 129, 0.15) !important;
+}
+.dark .text-emerald-700,
+.dark .text-emerald-800,
+.dark .text-emerald-900 {
+  color: #34d399 !important;
+}
+.dark .border-emerald-200,
+.dark .border-emerald-300,
+.dark .border-emerald-100\/60,
+.dark .border-emerald-200\/80 {
+  border-color: rgba(16, 185, 129, 0.3) !important;
+}
+
+/* Amber / Yellow (Pending, Requested, In Progress) */
+.dark .bg-amber-50,
+.dark .bg-yellow-50,
+.dark .bg-amber-50\/50,
+.dark .bg-amber-50\/60,
+.dark .bg-amber-50\/30 {
+  background-color: rgba(245, 158, 11, 0.15) !important;
+}
+.dark .text-amber-700,
+.dark .text-amber-800,
+.dark .text-yellow-800 {
+  color: #fbbf24 !important;
+}
+.dark .border-amber-200,
+.dark .border-amber-300,
+.dark .border-amber-100\/60 {
+  border-color: rgba(245, 158, 11, 0.3) !important;
+}
+.dark .bg-amber-100 {
+  background-color: rgba(245, 158, 11, 0.22) !important;
+}
+.dark .hover\:bg-amber-100:hover {
+  background-color: rgba(245, 158, 11, 0.28) !important;
+}
+
+/* Rose / Red (Cancelled, Rejected, Suspended, Error) */
+.dark .bg-rose-50,
+.dark .bg-red-50,
+.dark .bg-rose-50\/40 {
+  background-color: rgba(244, 63, 94, 0.15) !important;
+}
+.dark .text-rose-600,
+.dark .text-rose-700,
+.dark .text-rose-800,
+.dark .text-red-700 {
+  color: #fb7185 !important;
+}
+.dark .border-rose-100,
+.dark .border-rose-200,
+.dark .border-red-200,
+.dark .border-rose-200\/80 {
+  border-color: rgba(244, 63, 94, 0.3) !important;
+}
+.dark .bg-rose-100 {
+  background-color: rgba(244, 63, 94, 0.22) !important;
+}
+.dark .hover\:bg-rose-100:hover {
+  background-color: rgba(244, 63, 94, 0.28) !important;
+}
+
+/* Sky / Blue */
+.dark .bg-sky-50,
+.dark .bg-blue-50,
+.dark .bg-blue-50\/50 {
+  background-color: rgba(14, 165, 233, 0.15) !important;
+}
+.dark .text-sky-700,
+.dark .text-sky-800,
+.dark .text-blue-700 {
+  color: #38bdf8 !important;
+}
+.dark .border-sky-200,
+.dark .border-blue-100\/60 {
+  border-color: rgba(14, 165, 233, 0.3) !important;
+}
+
+/* Teal / Jade */
+.dark .bg-teal-50 {
+  background-color: rgba(20, 184, 166, 0.15) !important;
+}
+.dark .text-teal-700,
+.dark .text-teal-800 {
+  color: #2dd4bf !important;
+}
+.dark .border-teal-200 {
+  border-color: rgba(20, 184, 166, 0.3) !important;
+}
+
+/* Indigo / Purple */
+.dark .bg-indigo-50,
+.dark .bg-purple-50,
+.dark .bg-purple-50\/50 {
+  background-color: rgba(99, 102, 241, 0.15) !important;
+}
+.dark .text-indigo-700,
+.dark .text-indigo-800,
+.dark .text-purple-700 {
+  color: #a5b4fc !important;
+}
+.dark .border-indigo-200,
+.dark .border-purple-100\/60 {
+  border-color: rgba(99, 102, 241, 0.3) !important;
+}
+
+/* Pink / Orange */
+.dark .bg-pink-50\/50 {
+  background-color: rgba(236, 72, 153, 0.15) !important;
+}
+.dark .border-pink-100\/60 {
+  border-color: rgba(236, 72, 153, 0.3) !important;
+}
+.dark .bg-orange-50\/50 {
+  background-color: rgba(249, 115, 22, 0.15) !important;
+}
+.dark .border-orange-100\/60 {
+  border-color: rgba(249, 115, 22, 0.3) !important;
 }
 
 /* Custom utility colors */
@@ -36,3 +391,39 @@ body {
 .text-petrol { color: var(--petrol); }
 .text-jade { color: var(--jade); }
 .border-canvas-border { border-color: var(--border); }
+
+/* Infinite Marquee Animations for Testimonials */
+@keyframes marquee-left {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes marquee-right {
+  from {
+    transform: translateX(-50%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.animate-marquee-left {
+  display: flex;
+  width: max-content;
+  animation: marquee-left 35s linear infinite;
+}
+
+.animate-marquee-right {
+  display: flex;
+  width: max-content;
+  animation: marquee-right 35s linear infinite;
+}
+
+.animate-marquee-left:hover,
+.animate-marquee-right:hover {
+  animation-play-state: paused;
+}

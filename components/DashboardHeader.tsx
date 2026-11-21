@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Home, User as UserIcon } from "lucide-react";
 import UserAvatar from "./UserAvatar";
+import ThemeToggle from "./ThemeToggle";
 
 interface DashboardHeaderProps {
   user: {
@@ -60,6 +61,7 @@ export default function DashboardHeader({ user }: DashboardHeaderProps) {
       </div>
 
       <div className="flex items-center gap-4">
+        <ThemeToggle />
         <Link
           href="/dashboard/profile"
           className="flex items-center gap-1.5 text-xs font-semibold text-[#526564] hover:text-[#18756B] transition"

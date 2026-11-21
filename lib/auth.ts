@@ -43,6 +43,19 @@ export const auth = betterAuth({
         }
       }
 
+      // Password policy validation on change-password
+      if (ctx.path === "/change-password") {
+        const body = ctx.body as Record<string, unknown> | undefined;
+        if (body) {
+          const newPassword = body.newPassword as string | undefined;
+          if (!newPassword || newPassword.length < 6 || !/[A-Z]/.test(newPassword) || !/[a-z]/.test(newPassword)) {
+            throw new APIError("BAD_REQUEST", {
+              message: "New password must be at least 6 characters and contain at least one uppercase and one lowercase letter.",
+            });
+          }
+        }
+      }
+
       // Prevent role or email escalation in user update & enforce strict profile validation
       if (ctx.path === "/update-user") {
         const body = ctx.body as Record<string, unknown> | undefined;

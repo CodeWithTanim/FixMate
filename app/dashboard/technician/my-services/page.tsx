@@ -16,7 +16,11 @@ import {
   AlertCircle,
   MapPin,
   Clock,
+  Clock3,
   DollarSign,
+  CheckCircle2,
+  XCircle,
+  Crown,
 } from "lucide-react";
 import { apiRequest, apiClient } from "@/lib/api/client";
 import type { ServiceItem, ServiceCategory, ServiceMode } from "@/types";
@@ -37,6 +41,7 @@ export default function MyServicesPage() {
   const [services, setServices] = useState<ServiceItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<"all" | "approved" | "pending" | "rejected">("all");
 
   // Edit modal state
   const [editingService, setEditingService] = useState<ServiceItem | null>(null);
@@ -220,6 +225,23 @@ export default function MyServicesPage() {
     setRefreshKey((k) => k + 1);
   };
 
+  const totalCount = services.length;
+  const approvedCount = services.filter((s) => s.approvalStatus === "approved").length;
+  const pendingCount = services.filter((s) => s.approvalStatus === "pending").length;
+  const rejectedCount = services.filter(
+    (s) => s.approvalStatus === "rejected" || (s.approvalStatus as string) === "cancelled"
+  ).length;
+
+  const filteredServices = services.filter((s) => {
+    if (statusFilter === "all") return true;
+    if (statusFilter === "approved") return s.approvalStatus === "approved";
+    if (statusFilter === "pending") return s.approvalStatus === "pending";
+    if (statusFilter === "rejected") {
+      return s.approvalStatus === "rejected" || (s.approvalStatus as string) === "cancelled";
+    }
+    return true;
+  });
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -236,6 +258,127 @@ export default function MyServicesPage() {
           <Plus className="h-4 w-4" />
           <span>Add New Service</span>
         </Link>
+      </div>
+
+      {/* Overview Metric Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <button
+          onClick={() => setStatusFilter("all")}
+          className={`text-left rounded-2xl p-4 border transition cursor-pointer ${
+            statusFilter === "all"
+              ? "bg-[#0B3638] text-white border-[#0B3638] shadow-xs"
+              : "bg-white text-[#152C2B] border-[#DCE5DF] hover:border-[#18756B]/40"
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className={`text-xs font-semibold ${statusFilter === "all" ? "text-emerald-200" : "text-[#526564]"}`}>
+              All Services
+            </span>
+            <Wrench className={`h-4 w-4 ${statusFilter === "all" ? "text-emerald-300" : "text-[#526564]"}`} />
+          </div>
+          <div className="mt-2 text-2xl font-black">{totalCount}</div>
+          <p className={`text-[11px] mt-0.5 ${statusFilter === "all" ? "text-white/70" : "text-[#526564]"}`}>
+            Total listings created
+          </p>
+        </button>
+
+        <button
+          onClick={() => setStatusFilter("approved")}
+          className={`text-left rounded-2xl p-4 border transition cursor-pointer ${
+            statusFilter === "approved"
+              ? "bg-emerald-800 text-white border-emerald-800 shadow-xs"
+              : "bg-white text-[#152C2B] border-[#DCE5DF] hover:border-emerald-500/40"
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className={`text-xs font-semibold ${statusFilter === "approved" ? "text-emerald-200" : "text-[#526564]"}`}>
+              Approved & Live
+            </span>
+            <CheckCircle2 className={`h-4 w-4 ${statusFilter === "approved" ? "text-emerald-300" : "text-emerald-600"}`} />
+          </div>
+          <div className={`mt-2 text-2xl font-black ${statusFilter === "approved" ? "text-white" : "text-emerald-700"}`}>
+            {approvedCount}
+          </div>
+          <p className={`text-[11px] mt-0.5 ${statusFilter === "approved" ? "text-white/70" : "text-[#526564]"}`}>
+            Published on catalog
+          </p>
+        </button>
+
+        <button
+          onClick={() => setStatusFilter("pending")}
+          className={`text-left rounded-2xl p-4 border transition cursor-pointer ${
+            statusFilter === "pending"
+              ? "bg-amber-700 text-white border-amber-700 shadow-xs"
+              : "bg-white text-[#152C2B] border-[#DCE5DF] hover:border-amber-500/40"
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className={`text-xs font-semibold ${statusFilter === "pending" ? "text-amber-200" : "text-[#526564]"}`}>
+              Pending Review
+            </span>
+            <Clock3 className={`h-4 w-4 ${statusFilter === "pending" ? "text-amber-300" : "text-amber-600"}`} />
+          </div>
+          <div className={`mt-2 text-2xl font-black ${statusFilter === "pending" ? "text-white" : "text-amber-700"}`}>
+            {pendingCount}
+          </div>
+          <p className={`text-[11px] mt-0.5 ${statusFilter === "pending" ? "text-white/70" : "text-[#526564]"}`}>
+            Under admin verification
+          </p>
+        </button>
+
+        <button
+          onClick={() => setStatusFilter("rejected")}
+          className={`text-left rounded-2xl p-4 border transition cursor-pointer ${
+            statusFilter === "rejected"
+              ? "bg-rose-800 text-white border-rose-800 shadow-xs"
+              : "bg-white text-[#152C2B] border-[#DCE5DF] hover:border-rose-500/40"
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className={`text-xs font-semibold ${statusFilter === "rejected" ? "text-rose-200" : "text-[#526564]"}`}>
+              Cancelled / Rejected
+            </span>
+            <XCircle className={`h-4 w-4 ${statusFilter === "rejected" ? "text-rose-300" : "text-rose-600"}`} />
+          </div>
+          <div className={`mt-2 text-2xl font-black ${statusFilter === "rejected" ? "text-white" : "text-rose-700"}`}>
+            {rejectedCount}
+          </div>
+          <p className={`text-[11px] mt-0.5 ${statusFilter === "rejected" ? "text-white/70" : "text-[#526564]"}`}>
+            Needs update or re-listed
+          </p>
+        </button>
+      </div>
+
+      {/* Status Filter Tabs */}
+      <div className="flex flex-wrap items-center gap-2 border-b border-[#DCE5DF] pb-3">
+        {[
+          { label: "All Services", value: "all" as const, count: totalCount },
+          { label: "Approved & Live", value: "approved" as const, count: approvedCount, badgeColor: "bg-emerald-100 text-emerald-800" },
+          { label: "Pending Review", value: "pending" as const, count: pendingCount, badgeColor: "bg-amber-100 text-amber-800" },
+          { label: "Cancelled / Rejected", value: "rejected" as const, count: rejectedCount, badgeColor: "bg-rose-100 text-rose-800" },
+        ].map((tab) => {
+          const isActive = statusFilter === tab.value;
+          return (
+            <button
+              key={tab.value}
+              onClick={() => setStatusFilter(tab.value)}
+              className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition cursor-pointer ${
+                isActive
+                  ? "bg-[#0B3638] text-white shadow-xs"
+                  : "bg-white text-[#526564] border border-[#DCE5DF] hover:bg-[#F6F5EF]"
+              }`}
+            >
+              <span>{tab.label}</span>
+              <span
+                className={`rounded-full px-2 py-0.5 text-[10px] font-extrabold ${
+                  isActive ? "bg-white/20 text-white" : tab.badgeColor || "bg-[#F6F5EF] text-[#526564]"
+                }`}
+              >
+                {tab.count}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       {loading ? (
@@ -271,9 +414,35 @@ export default function MyServicesPage() {
             </Link>
           </div>
         </div>
+      ) : filteredServices.length === 0 ? (
+        <div className="rounded-3xl border border-dashed border-[#DCE5DF] bg-white p-12 text-center space-y-3">
+          <Wrench className="h-8 w-8 text-[#526564] mx-auto" />
+          <h3 className="text-sm font-bold text-[#152C2B]">
+            {statusFilter === "approved"
+              ? "No Approved Services Found"
+              : statusFilter === "pending"
+              ? "No Pending Services"
+              : "No Cancelled or Rejected Services"}
+          </h3>
+          <p className="text-xs text-[#526564] max-w-sm mx-auto">
+            {statusFilter === "approved"
+              ? "You do not have any live approved services in this tab right now."
+              : statusFilter === "pending"
+              ? "All your listings have been reviewed by our admin team!"
+              : "None of your service listings have been rejected or cancelled."}
+          </p>
+          <div className="pt-2">
+            <button
+              onClick={() => setStatusFilter("all")}
+              className="rounded-xl border border-[#DCE5DF] bg-[#F6F5EF] px-4 py-2 text-xs font-bold text-[#152C2B] hover:bg-[#DCE5DF] cursor-pointer"
+            >
+              View All Services
+            </button>
+          </div>
+        </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {services.map((service) => {
+          {filteredServices.map((service) => {
             const id = (service.id || service._id || "") as string;
             const isApproved = service.approvalStatus === "approved";
             const isPending = service.approvalStatus === "pending";
@@ -299,18 +468,40 @@ export default function MyServicesPage() {
                     )}
                   </div>
 
-                  <div className="flex items-center justify-between text-xs">
-                    <span
-                      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
-                        isApproved
-                          ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                          : isPending
-                          ? "bg-amber-50 text-amber-800 border border-amber-200"
-                          : "bg-rose-50 text-rose-700 border border-rose-200"
-                      }`}
-                    >
-                      {service.approvalStatus}
-                    </span>
+                  <div className="flex items-center justify-between text-xs gap-2">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span
+                        className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
+                          isApproved
+                            ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                            : isPending
+                            ? "bg-amber-50 text-amber-800 border border-amber-200"
+                            : "bg-rose-50 text-rose-700 border border-rose-200"
+                        }`}
+                      >
+                        {isApproved ? (
+                          <CheckCircle2 className="h-3 w-3" />
+                        ) : isPending ? (
+                          <Clock3 className="h-3 w-3" />
+                        ) : (
+                          <XCircle className="h-3 w-3" />
+                        )}
+                        <span>
+                          {isApproved
+                            ? "Approved & Live"
+                            : isPending
+                            ? "Pending Review"
+                            : "Cancelled / Rejected"}
+                        </span>
+                      </span>
+
+                      {service.isProTechnician && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-linear-to-r from-amber-500 to-amber-600 px-2 py-0.5 text-[9px] font-black uppercase text-white shadow-2xs">
+                          <Crown className="h-2.5 w-2.5 fill-white" />
+                          <span>PRO</span>
+                        </span>
+                      )}
+                    </div>
                     <span className="text-[11px] font-semibold text-[#526564]">
                       {service.serviceMode}
                     </span>

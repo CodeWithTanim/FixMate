@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { X, Calendar, MapPin, Phone, FileText, Loader2, Wrench } from "lucide-react";
 import { apiRequest } from "@/lib/api/client";
+import { useFocusTrap } from "@/lib/useFocusTrap";
 import type { ServiceItem, UserProfile } from "@/types";
 
 export default function BookingRequestModal({
@@ -14,7 +15,13 @@ export default function BookingRequestModal({
   service: ServiceItem;
   currentUser: UserProfile;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      return params.get("request") === "true" || params.get("book") === "true";
+    }
+    return false;
+  });
   const [phone, setPhone] = useState(currentUser.phone || "");
   const [address, setAddress] = useState(currentUser.area || "");
   const [preferredDate, setPreferredDate] = useState("");
@@ -22,6 +29,7 @@ export default function BookingRequestModal({
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const router = useRouter();
+  const containerRef = useFocusTrap(open);
 
   // Today in YYYY-MM-DD in explicit Asia/Dhaka service timezone
   const today = new Intl.DateTimeFormat("en-CA", {
@@ -118,7 +126,9 @@ export default function BookingRequestModal({
           }}
         >
           <div
-            className="relative w-full max-w-lg rounded-3xl border border-[#DCE5DF] bg-white p-6 sm:p-8 shadow-2xl my-8"
+            ref={containerRef}
+            tabIndex={-1}
+            className="relative w-full max-w-lg rounded-3xl border border-[#DCE5DF] bg-white p-6 sm:p-8 shadow-2xl my-8 focus:outline-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             <button

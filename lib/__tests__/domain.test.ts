@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { getSafeRedirectUrl, formatCalendarDate } from "../utils.ts";
 
 // Domain test suite for FixMate client contracts, business rules & invariants
 
@@ -396,11 +397,13 @@ test("API token manager binds token to active session and discards in-flight tok
   // Active session fetches token
   const epoch = activeSessionEpoch;
   inFlightPromise = fetchTokenMock(epoch);
+  const outstandingPromise = inFlightPromise;
 
   // User signs out before in-flight fetch completes
   clearTokenCache();
 
-  const resolved = await inFlightPromise;
+  // Awaiting the actual outstanding promise that was in flight
+  const resolved = await outstandingPromise;
   assert.equal(resolved, null, "In-flight token from previous session must be discarded");
   assert.equal(memoryToken, null, "Memory token must not be repopulated after logout");
 });
@@ -431,4 +434,82 @@ test("getTodayCalendarDate computes calendar YYYY-MM-DD in explicit Asia/Dhaka t
   });
   const today = formatter.format(new Date());
   assert.match(today, /^\d{4}-\d{2}-\d{2}$/);
+});
+
+test("Pro Technician tier calculates 0% fee vs Standard 10% commission", () => {
+  function calculateTechnicianPayout(grossEarnings: number, isPro: boolean): { feeRate: number; platformFee: number; netPayout: number } {
+    const feeRate = isPro ? 0 : 0.10;
+    const platformFee = Math.round(grossEarnings * feeRate * 100) / 100;
+    const netPayout = Math.round((grossEarnings - platformFee) * 100) / 100;
+    return { feeRate: isPro ? 0 : 10, platformFee, netPayout };
+  }
+
+  // Standard technician with $500 in earnings -> $50 fee, $450 payout
+  const standard = calculateTechnicianPayout(500, false);
+  assert.equal(standard.feeRate, 10);
+  assert.equal(standard.platformFee, 50);
+  assert.equal(standard.netPayout, 450);
+
+  // Pro technician with $500 in earnings -> $0 fee, $500 payout (100% kept)
+  const pro = calculateTechnicianPayout(500, true);
+  assert.equal(pro.feeRate, 0);
+  assert.equal(pro.platformFee, 0);
+  assert.equal(pro.netPayout, 500);
+});
+
+test("Service listing creation limit permits max 5 for standard and unlimited for pro", () => {
+  function canCreateService(currentCount: number, isPro: boolean): boolean {
+    if (isPro) return true;
+    return currentCount < 5;
+  }
+
+  assert.equal(canCreateService(0, false), true);
+  assert.equal(canCreateService(4, false), true);
+  assert.equal(canCreateService(5, false), false);
+  assert.equal(canCreateService(10, false), false);
+
+  assert.equal(canCreateService(5, true), true);
+  assert.equal(canCreateService(50, true), true);
+});
+
+test("getSafeRedirectUrl strictly enforces safe relative paths and blocks control character, protocol-relative, and backslash bypasses", () => {
+  assert.equal(getSafeRedirectUrl("/dashboard/customer"), "/dashboard/customer");
+  assert.equal(getSafeRedirectUrl("/services/123"), "/services/123");
+  assert.equal(getSafeRedirectUrl("/dashboard/customer?session_id=cs_123"), "/dashboard/customer?session_id=cs_123");
+
+  // Bypasses must return default
+  assert.equal(getSafeRedirectUrl("https://malicious.com", "/dashboard/customer"), "/dashboard/customer");
+  assert.equal(getSafeRedirectUrl("//malicious.com", "/dashboard/customer"), "/dashboard/customer");
+  assert.equal(getSafeRedirectUrl("/\\malicious.com", "/dashboard/customer"), "/dashboard/customer");
+  assert.equal(getSafeRedirectUrl("javascript:alert(1)", "/dashboard/customer"), "/dashboard/customer");
+  assert.equal(getSafeRedirectUrl(null, "/dashboard/customer"), "/dashboard/customer");
+
+  // Control character bypasses
+  assert.equal(getSafeRedirectUrl("/\r\n/example.invalid", "/dashboard/customer"), "/dashboard/customer");
+  assert.equal(getSafeRedirectUrl("/\n/example.invalid", "/dashboard/customer"), "/dashboard/customer");
+  assert.equal(getSafeRedirectUrl("/%0d%0a/example.invalid", "/dashboard/customer"), "/dashboard/customer");
+  assert.equal(getSafeRedirectUrl("/\t/example.invalid", "/dashboard/customer"), "/dashboard/customer");
+});
+
+test("formatCalendarDate accurately formats YYYY-MM-DD across timezones without date shift", () => {
+  assert.equal(formatCalendarDate("2026-11-25"), "Nov 25, 2026");
+  assert.equal(formatCalendarDate("2026-01-01"), "Jan 1, 2026");
+  assert.equal(formatCalendarDate("2026-12-31"), "Dec 31, 2026");
+  assert.equal(formatCalendarDate(""), "");
+});
+
+test("Review rating integer validation rejects floating point ratings and non-numbers", () => {
+  function isValidRating(rating: unknown): boolean {
+    return typeof rating === "number" && Number.isInteger(rating) && rating >= 1 && rating <= 5;
+  }
+
+  assert.equal(isValidRating(5), true);
+  assert.equal(isValidRating(1), true);
+  assert.equal(isValidRating(4), true);
+  assert.equal(isValidRating(4.6), false, "Float rating 4.6 must be rejected");
+  assert.equal(isValidRating("5"), false);
+  assert.equal(isValidRating(0), false);
+  assert.equal(isValidRating(6), false);
+  assert.equal(isValidRating(null), false);
+  assert.equal(isValidRating(true), false);
 });

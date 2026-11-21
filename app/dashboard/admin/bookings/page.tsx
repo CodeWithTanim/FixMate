@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { formatCalendarDate } from "@/lib/utils";
 import {
   CalendarCheck,
   Search,
@@ -202,13 +203,7 @@ export default function AdminBookingsPage() {
                       <td className="py-3.5 px-4 text-[#526564]">
                         <div className="flex items-center gap-1 text-[11px]">
                           <Calendar className="h-3 w-3 text-[#526564]/60" />
-                          <span>
-                            {new Date(b.preferredDate).toLocaleDateString("en-US", {
-                              month: "short",
-                              day: "numeric",
-                              year: "numeric",
-                            })}
-                          </span>
+                          <span>{formatCalendarDate(b.preferredDate)}</span>
                         </div>
                       </td>
 

@@ -11,6 +11,7 @@ import {
   PlusCircle,
   Briefcase,
   ListOrdered,
+  Crown,
 } from "lucide-react";
 import { apiClient } from "@/lib/api/client";
 
@@ -22,6 +23,11 @@ interface TechnicianStats {
   totalServices: number;
   approvedServices: number;
   totalEarnings: number;
+  grossEarnings?: number;
+  platformFeeRate?: number;
+  platformFeeDeducted?: number;
+  isPro?: boolean;
+  proTier?: string;
   recentRequests: Array<{
     id: string;
     serviceTitle: string;
@@ -106,7 +112,11 @@ export default function TechnicianDashboard() {
       label: "Settled Revenue",
       value: `$${stats ? stats.totalEarnings.toFixed(2) : "0.00"}`,
       icon: DollarSign,
-      desc: "Collected for completed work",
+      desc: stats?.isPro
+        ? "Net Take-Home (0% platform fee)"
+        : stats?.platformFeeDeducted
+        ? `Net Take-Home (10% fee: -$${stats.platformFeeDeducted.toFixed(2)})`
+        : "Collected for completed work",
       color: "text-[#0B3638] bg-[#0B3638]/10",
     },
   ];
@@ -138,6 +148,57 @@ export default function TechnicianDashboard() {
           </Link>
         </div>
       </div>
+
+      {/* Pro Membership Status Banner */}
+      {stats?.isPro ? (
+        <div className="rounded-2xl border border-amber-300 dark:border-amber-400/30 bg-gradient-to-r from-[#0B3638] via-[#0E3D40] to-[#18756B] text-white p-4 sm:p-5 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-amber-400/20 border border-amber-400/30 flex items-center justify-center shrink-0">
+              <Crown className="h-5 w-5 text-[#F4B740] fill-[#F4B740]" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-black text-white">FixMate Pro Partner</span>
+                <span className="rounded-full bg-emerald-400/20 border border-emerald-400/30 px-2 py-0.2 text-[9px] font-black uppercase text-emerald-300">
+                  0% Commission Active
+                </span>
+              </div>
+              <p className="text-xs text-white/80 mt-0.5">
+                Keep 100% of all repair earnings. Priority placement active in search & catalog.
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/dashboard/technician/subscription"
+            className="rounded-xl border border-white/20 bg-white/10 hover:bg-white/20 px-3.5 py-1.5 text-xs font-bold text-white transition text-center whitespace-nowrap self-stretch sm:self-auto"
+          >
+            Manage Pro Tier
+          </Link>
+        </div>
+      ) : (
+        <div className="rounded-2xl border border-amber-200 dark:border-amber-400/20 bg-amber-50/80 dark:bg-amber-400/10 p-4 sm:p-5 shadow-2xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-amber-100 dark:bg-amber-400/20 flex items-center justify-center shrink-0">
+              <Crown className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+            </div>
+            <div>
+              <div className="text-sm font-bold text-[#152C2B] dark:text-[#EEF8F6]">
+                Standard Tier (10% platform fee applied • 5-service limit)
+              </div>
+              <p className="text-xs text-[#526564] dark:text-[#8EA8A5] mt-0.5">
+                Upgrade to FixMate Pro ($29/mo) to keep 100% of your customer earnings and unlock unlimited service listings.
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/dashboard/technician/subscription"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-linear-to-r from-amber-500 to-amber-600 px-4 py-2 text-xs font-bold text-white hover:from-amber-600 hover:to-amber-700 transition shadow-xs whitespace-nowrap self-stretch sm:self-auto justify-center"
+          >
+            <Crown className="h-3.5 w-3.5 fill-white" />
+            <span>Upgrade to Pro ($29/mo)</span>
+          </Link>
+        </div>
+      )}
 
       {/* Error state if API call failed */}
       {errorMsg ? (

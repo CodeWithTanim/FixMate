@@ -2,13 +2,15 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import { Wrench, Menu, X, LogOut, LayoutDashboard, ChevronDown, User as UserIcon } from "lucide-react";
+import { Menu, X, LogOut, LayoutDashboard, ChevronDown, User as UserIcon } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 import { signOutUser } from "@/lib/api/client";
 import toast from "react-hot-toast";
 import type { UserProfile } from "@/types";
 import UserAvatar from "./UserAvatar";
+import ThemeToggle from "./ThemeToggle";
 
 export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -48,8 +50,8 @@ export default function Navbar() {
 
   const navLinks = [
     { name: "Home", href: "/" },
-    { name: "Browse Services", href: "/services" },
-    { name: "How It Works", href: "/about" },
+    { name: "Services", href: "/services" },
+    { name: "About Us", href: "/about" },
   ];
 
   const handleSignOut = async () => {
@@ -69,9 +71,14 @@ export default function Navbar() {
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Brand */}
         <Link href="/" className="flex items-center gap-2.5 group">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#0B3638] text-[#F4B740] shadow-xs group-hover:scale-105 transition-transform">
-            <Wrench className="h-5 w-5" />
-          </div>
+          <Image
+            src="/logo.png"
+            alt="FixMate Logo"
+            width={38}
+            height={38}
+            className="rounded-xl shadow-xs group-hover:scale-105 transition-transform object-contain"
+            priority
+          />
           <span className="text-xl font-bold tracking-tight text-[#152C2B]">
             Fix<span className="text-[#18756B]">Mate</span>
           </span>
@@ -93,7 +100,8 @@ export default function Navbar() {
         </nav>
 
         {/* Auth Actions / Avatar Dropdown */}
-        <div className="hidden md:flex items-center gap-4">
+        <div className="hidden md:flex items-center gap-3">
+          <ThemeToggle />
           {isPending ? (
             <div className="h-9 w-24 animate-pulse rounded-lg bg-[#DCE5DF]" />
           ) : session ? (
@@ -161,14 +169,17 @@ export default function Navbar() {
           )}
         </div>
 
-        {/* Mobile menu toggle */}
-        <button
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="md:hidden rounded-lg p-2 text-[#152C2B] hover:bg-[#DCE5DF]/40"
-          aria-label="Toggle navigation menu"
-        >
-          {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-        </button>
+        {/* Mobile controls */}
+        <div className="flex items-center gap-2 md:hidden">
+          <ThemeToggle />
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="rounded-lg p-2 text-[#152C2B] hover:bg-[#DCE5DF]/40 cursor-pointer"
+            aria-label="Toggle navigation menu"
+          >
+            {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+          </button>
+        </div>
       </div>
 
       {/* Mobile Drawer */}

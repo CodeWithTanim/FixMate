@@ -1,10 +1,24 @@
 "use client";
 
-import { Suspense } from "react";
+import { useEffect, Suspense } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { AlertTriangle, ArrowRight, ArrowLeft } from "lucide-react";
 
 function PaymentCancelContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const bookingId = searchParams.get("booking_id");
+
+  useEffect(() => {
+    if (!bookingId) {
+      router.replace("/dashboard/customer/bookings");
+    }
+  }, [bookingId, router]);
+
+  if (!bookingId) {
+    return null;
+  }
   return (
     <div className="min-h-[80vh] flex items-center justify-center p-4">
       <div className="w-full max-w-md rounded-3xl border border-[#DCE5DF] bg-white p-8 shadow-xl text-center space-y-6">

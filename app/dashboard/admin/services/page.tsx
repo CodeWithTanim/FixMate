@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import toast from "react-hot-toast";
 import { CheckCircle2, XCircle, Clock, Loader2, ShieldCheck, Tag } from "lucide-react";
 import { apiRequest } from "@/lib/api/client";
@@ -11,10 +11,12 @@ export default function AdminServicesPage() {
   const [filter, setFilter] = useState<"all" | "pending" | "approved" | "rejected">("pending");
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const filterRef = useRef(filter);
 
   useEffect(() => {
+    filterRef.current = filter;
     let active = true;
-    const loadServices = async () => {
+    const fetchServices = async () => {
       setLoading(true);
       const query = filter !== "all" ? `?status=${filter}` : "";
       const res = await apiRequest<{ data: ServiceItem[] }>(`/api/admin/services${query}`);
@@ -27,8 +29,7 @@ export default function AdminServicesPage() {
         setServices(res.data?.data || []);
       }
     };
-
-    loadServices();
+    fetchServices();
     return () => {
       active = false;
     };
@@ -36,6 +37,7 @@ export default function AdminServicesPage() {
 
   const handleUpdateApproval = async (id: string, status: "approved" | "rejected") => {
     if (updatingId) return;
+    const filterWhenInitiated = filterRef.current;
     setUpdatingId(id);
     const toastId = toast.loading(`Updating service to ${status}...`);
     const res = await apiRequest(`/api/admin/services/${id}/approval`, {
@@ -50,7 +52,18 @@ export default function AdminServicesPage() {
     }
 
     toast.success(`Service marked as ${status}`, { id: toastId });
-    if (filter !== "all") {
+    // If the active filter changed during in-flight request, reload current tab authoritative data
+    if (filterRef.current !== filterWhenInitiated) {
+      const activeFilter = filterRef.current;
+      const query = activeFilter !== "all" ? `?status=${activeFilter}` : "";
+      const reloadRes = await apiRequest<{ data: ServiceItem[] }>(`/api/admin/services${query}`);
+      if (!reloadRes.error && filterRef.current === activeFilter) {
+        setServices(reloadRes.data?.data || []);
+      }
+      return;
+    }
+
+    if (filterWhenInitiated !== "all" && filterWhenInitiated !== status) {
       setServices((prev) => prev.filter((s) => s.id !== id && s._id !== id));
     } else {
       setServices((prev) =>

@@ -15,7 +15,14 @@ export default function UserAvatar({
   size = "md",
   className = "",
 }: UserAvatarProps) {
+  const [prevSrc, setPrevSrc] = useState(src);
   const [imgError, setImgError] = useState(false);
+
+  // Official React pattern: reset state during render when prop changes
+  if (prevSrc !== src) {
+    setPrevSrc(src);
+    setImgError(false);
+  }
 
   const initial = (name?.trim()?.[0] || "U").toUpperCase();
 

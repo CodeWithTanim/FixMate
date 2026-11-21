@@ -13,10 +13,14 @@ import {
   XCircle,
   ArrowRight,
   CreditCard,
+  Star,
+  Crown,
 } from "lucide-react";
 import { apiClient } from "@/lib/api/client";
 import toast from "react-hot-toast";
+import { formatCalendarDate } from "@/lib/utils";
 import JobTimelineModal, { StatusHistoryItem } from "@/components/JobTimelineModal";
+import LeaveReviewModal from "@/components/LeaveReviewModal";
 
 interface Booking {
   id: string;
@@ -29,6 +33,7 @@ interface Booking {
   finalAmount: number;
   technicianName: string;
   technicianEmail: string;
+  isProTechnician?: boolean;
   customerPhone: string;
   serviceAddress: string;
   preferredDate: string;
@@ -37,11 +42,18 @@ interface Booking {
   paymentStatus: "unpaid" | "paid";
   statusHistory?: StatusHistoryItem[];
   createdAt: string;
+  isReviewed?: boolean;
+  review?: {
+    rating: number;
+    comment: string;
+    createdAt?: string;
+  };
 }
 
 export default function CustomerBookingsPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState("all");
 
   // Cancellation modal state
@@ -53,6 +65,9 @@ export default function CustomerBookingsPage() {
   // Timeline modal state
   const [timelineBooking, setTimelineBooking] = useState<Booking | null>(null);
 
+  // Review modal state
+  const [reviewingBooking, setReviewingBooking] = useState<Booking | null>(null);
+
   // Payment loading state per booking ID
   const [payingBookingId, setPayingBookingId] = useState<string | null>(null);
 
@@ -60,6 +75,8 @@ export default function CustomerBookingsPage() {
     let active = true;
     const fetchBookings = async () => {
       try {
+        setLoading(true);
+        setFetchError(null);
         const res = await apiClient.get<{ data: Booking[] }>("/api/bookings/my");
         if (active) {
           setBookings(res.data || []);
@@ -67,7 +84,9 @@ export default function CustomerBookingsPage() {
       } catch (err: unknown) {
         if (active) {
           const error = err as { message?: string };
-          toast.error(error.message || "Failed to load bookings");
+          const msg = error.message || "Failed to load bookings";
+          toast.error(msg);
+          setFetchError(msg);
         }
       } finally {
         if (active) {
@@ -206,6 +225,23 @@ export default function CustomerBookingsPage() {
             <div key={i} className="h-40 rounded-2xl bg-white border border-[#DCE5DF] animate-pulse" />
           ))}
         </div>
+      ) : fetchError ? (
+        <div className="rounded-2xl border border-rose-200 dark:border-rose-900/50 bg-rose-50/70 dark:bg-rose-950/20 p-8 text-center space-y-4">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-100 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400">
+            <Calendar className="h-6 w-6" />
+          </div>
+          <div>
+            <h3 className="text-base font-bold text-rose-950 dark:text-rose-200">Failed to Load Repair Bookings</h3>
+            <p className="text-xs text-rose-800 dark:text-rose-300/80 mt-1 max-w-md mx-auto">{fetchError}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setRefreshKey((k) => k + 1)}
+            className="inline-flex items-center gap-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white px-5 py-2.5 text-xs font-bold transition shadow-xs cursor-pointer"
+          >
+            Retry Loading Bookings
+          </button>
+        </div>
       ) : filteredBookings.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-[#DCE5DF] bg-white p-12 text-center">
           <Calendar className="mx-auto h-10 w-10 text-[#526564]/40 mb-3" />
@@ -226,6 +262,7 @@ export default function CustomerBookingsPage() {
             const bookingId = b.id || b._id || "";
             const isCompleted = b.status === "completed";
             const isUnpaid = b.paymentStatus === "unpaid";
+            const isPaid = b.paymentStatus === "paid";
             const canCancel = b.status === "requested";
 
             return (
@@ -280,19 +317,21 @@ export default function CustomerBookingsPage() {
                     </p>
 
                     <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-[#526564] pt-1">
-                      <span className="flex items-center gap-1">
-                        <User className="h-3.5 w-3.5 text-[#18756B]" />
-                        <span>Technician: {b.technicianName}</span>
+                      <span className="flex items-center gap-1.5 flex-wrap">
+                        <span className="flex items-center gap-1">
+                          <User className="h-3.5 w-3.5 text-[#18756B]" />
+                          <span>Technician: {b.technicianName}</span>
+                        </span>
+                        {b.isProTechnician && (
+                          <span className="inline-flex items-center gap-0.5 rounded-full bg-linear-to-r from-amber-500 to-amber-600 px-1.5 py-0.2 text-[8px] font-black text-white shadow-2xs">
+                            <Crown className="h-2 w-2 fill-white" />
+                            <span>PRO</span>
+                          </span>
+                        )}
                       </span>
                       <span className="flex items-center gap-1">
                         <Calendar className="h-3.5 w-3.5 text-[#18756B]" />
-                        <span>
-                          {new Date(b.preferredDate).toLocaleDateString("en-US", {
-                            month: "short",
-                            day: "numeric",
-                            year: "numeric",
-                          })}
-                        </span>
+                        <span>{formatCalendarDate(b.preferredDate)}</span>
                       </span>
                       <span className="flex items-center gap-1">
                         <MapPin className="h-3.5 w-3.5 text-[#18756B]" />
@@ -336,6 +375,25 @@ export default function CustomerBookingsPage() {
                       </button>
                     )}
 
+                    {/* Rate & Review Button for completed & paid repair */}
+                    {isCompleted && isPaid && (
+                      b.isReviewed || b.review ? (
+                        <span className="inline-flex items-center gap-1 rounded-xl border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs font-bold text-emerald-800">
+                          <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-500" />
+                          <span>Reviewed</span>
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => setReviewingBooking(b)}
+                          className="inline-flex items-center gap-1.5 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-900 hover:bg-amber-100 transition cursor-pointer"
+                          title="Leave review & rating for this technician"
+                        >
+                          <Star className="h-3.5 w-3.5 fill-[#F4B740] text-[#F4B740]" />
+                          <span>Rate & Review</span>
+                        </button>
+                      )
+                    )}
+
                     {/* Cancel Request Button */}
                     {canCancel && (
                       <button
@@ -357,14 +415,24 @@ export default function CustomerBookingsPage() {
 
       {/* Cancellation Reason Modal */}
       {cancellingBooking && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="cancel-dialog-title"
+          onKeyDown={(e) => {
+            if (e.key === "Escape" && !cancelling) {
+              setCancellingBooking(null);
+            }
+          }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs"
+        >
           <div className="relative w-full max-w-md rounded-2xl border border-[#DCE5DF] bg-white p-6 shadow-2xl space-y-4">
             <div className="flex items-center gap-3 text-rose-600">
               <div className="p-2.5 rounded-full bg-rose-100">
                 <AlertCircle className="h-5 w-5" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-[#152C2B]">Cancel Booking Request?</h3>
+                <h3 id="cancel-dialog-title" className="text-base font-bold text-[#152C2B]">Cancel Booking Request?</h3>
                 <p className="text-xs text-[#526564]">
                   This will cancel your pending repair appointment.
                 </p>
@@ -372,28 +440,34 @@ export default function CustomerBookingsPage() {
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-bold text-[#152C2B]">
+              <label htmlFor="cancel-reason-input" className="text-xs font-bold text-[#152C2B]">
                 Cancellation Reason (Optional)
               </label>
               <textarea
+                id="cancel-reason-input"
                 value={cancelReason}
                 onChange={(e) => setCancelReason(e.target.value)}
                 placeholder="Let the technician know why you are cancelling..."
                 className="w-full rounded-xl border border-[#DCE5DF] p-3 text-xs focus:border-[#18756B] focus:outline-hidden min-h-[80px]"
+                autoFocus
               />
             </div>
 
             <div className="flex justify-end gap-2 pt-2">
               <button
+                type="button"
                 onClick={() => setCancellingBooking(null)}
-                className="rounded-xl border border-[#DCE5DF] px-4 py-2 text-xs font-bold text-[#526564] hover:bg-[#F6F5EF]"
+                aria-label="Keep this booking"
+                className="rounded-xl border border-[#DCE5DF] px-4 py-2 text-xs font-bold text-[#526564] hover:bg-[#F6F5EF] cursor-pointer"
               >
                 Keep Booking
               </button>
               <button
+                type="button"
                 onClick={handleCancelBooking}
                 disabled={cancelling}
-                className="rounded-xl bg-rose-600 px-5 py-2 text-xs font-bold text-white hover:bg-rose-700 disabled:opacity-50"
+                aria-label="Confirm cancellation of booking request"
+                className="rounded-xl bg-rose-600 px-5 py-2 text-xs font-bold text-white hover:bg-rose-700 disabled:opacity-50 cursor-pointer"
               >
                 {cancelling ? "Cancelling..." : "Confirm Cancellation"}
               </button>
@@ -410,6 +484,18 @@ export default function CustomerBookingsPage() {
           serviceTitle={timelineBooking.serviceTitle}
           bookingId={timelineBooking.id || timelineBooking._id || ""}
           statusHistory={timelineBooking.statusHistory}
+        />
+      )}
+
+      {/* Leave Review Modal */}
+      {reviewingBooking && (
+        <LeaveReviewModal
+          isOpen={Boolean(reviewingBooking)}
+          onClose={() => setReviewingBooking(null)}
+          bookingId={(reviewingBooking.id || reviewingBooking._id || "") as string}
+          serviceTitle={reviewingBooking.serviceTitle}
+          technicianName={reviewingBooking.technicianName}
+          onSuccess={() => setRefreshKey((k) => k + 1)}
         />
       )}
     </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { CheckCircle2, AlertCircle, ArrowRight, Loader2, ShieldCheck, RefreshCw, Wrench } from "lucide-react";
 import { apiClient } from "@/lib/api/client";
@@ -16,6 +16,7 @@ interface PaymentReceipt {
 }
 
 function PaymentSuccessContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const sessionId = searchParams.get("session_id");
   const bookingId = searchParams.get("booking_id");
@@ -23,13 +24,12 @@ function PaymentSuccessContent() {
   const [verifying, setVerifying] = useState(Boolean(sessionId && bookingId));
   const [verified, setVerified] = useState(false);
   const [receipt, setReceipt] = useState<PaymentReceipt | null>(null);
-  const [errorMsg, setErrorMsg] = useState<string | null>(
-    !sessionId || !bookingId ? "Missing session or booking reference in payment callback." : null
-  );
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [retryTrigger, setRetryTrigger] = useState(0);
 
   useEffect(() => {
     if (!sessionId || !bookingId) {
+      router.replace("/dashboard/customer/bookings");
       return;
     }
 
@@ -84,7 +84,7 @@ function PaymentSuccessContent() {
     return () => {
       active = false;
     };
-  }, [sessionId, bookingId, retryTrigger]);
+  }, [sessionId, bookingId, retryTrigger, router]);
 
   return (
     <div className="min-h-[80vh] flex items-center justify-center p-4">

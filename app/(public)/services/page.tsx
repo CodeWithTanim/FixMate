@@ -63,10 +63,6 @@ export default async function ServicesPage(props: {
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8 space-y-8">
       {/* Header */}
       <div className="space-y-2">
-        <div className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-[#18756B]">
-          <Wrench className="h-4 w-4" />
-          Verified Service Catalog
-        </div>
         <h1 className="text-3xl font-extrabold tracking-tight text-[#152C2B] sm:text-4xl">
           Browse Repair Services
         </h1>

@@ -8,7 +8,6 @@ import {
   CheckCircle2,
   Calendar,
   User,
-  ShieldCheck,
 } from "lucide-react";
 import { apiClient } from "@/lib/api/client";
 import toast from "react-hot-toast";
@@ -101,7 +100,7 @@ export default function AdminTransactionsPage() {
       </div>
 
       {/* Revenue Card Banner */}
-      <div className="rounded-2xl border border-[#DCE5DF] bg-[#0B3638] text-white p-6 shadow-2xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="rounded-2xl border border-[#DCE5DF] bg-[#0B3638] text-white p-6 shadow-2xs">
         <div>
           <span className="text-xs font-bold uppercase tracking-wider text-[#F4B740]">
             Gross Platform Settled Volume
@@ -113,14 +112,6 @@ export default function AdminTransactionsPage() {
           <p className="text-xs text-white/70 mt-1">
             Calculated strictly from verified Stripe payment fulfillments.
           </p>
-        </div>
-
-        <div className="flex items-center gap-2 bg-white/10 px-4 py-3 rounded-xl border border-white/10">
-          <ShieldCheck className="h-5 w-5 text-[#F4B740]" />
-          <div className="text-xs">
-            <div className="font-bold text-white">Stripe Test Mode</div>
-            <div className="text-[10px] text-white/60">Verified settled ledger</div>
-          </div>
         </div>
       </div>
 

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Wrench, MapPin, Clock, ArrowRight, Tag, UserCheck } from "lucide-react";
+import { Wrench, MapPin, Clock, ArrowRight, Tag, UserCheck, Crown } from "lucide-react";
 import type { ServiceItem } from "@/types";
 
 export default function ServiceCard({ service }: { service: ServiceItem }) {
@@ -39,6 +39,12 @@ export default function ServiceCard({ service }: { service: ServiceItem }) {
           <span className="font-semibold text-[#152C2B] truncate">
             {service.technicianName || "Certified Technician"}
           </span>
+          {service.isProTechnician && (
+            <span className="inline-flex items-center gap-0.5 rounded-full bg-linear-to-r from-amber-500 to-amber-600 px-1.5 py-0.2 text-[8px] font-black text-white shadow-2xs">
+              <Crown className="h-2 w-2 fill-white" />
+              <span>PRO</span>
+            </span>
+          )}
         </div>
 
         <p className="text-xs text-[#526564] line-clamp-2 leading-relaxed">

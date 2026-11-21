@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { X } from "lucide-react";
+import { useFocusTrap } from "@/lib/useFocusTrap";
 
 interface DialogProps {
   open: boolean;
@@ -20,6 +21,8 @@ export function Dialog({
   children,
   maxWidth = "md",
 }: DialogProps) {
+  const containerRef = useFocusTrap(open);
+
   React.useEffect(() => {
     if (!open) return;
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -54,16 +57,18 @@ export function Dialog({
       }}
     >
       <div
-        className={`relative w-full ${maxWidthClasses[maxWidth]} rounded-3xl border border-[#DCE5DF] bg-white p-6 shadow-2xl my-8 max-h-[90vh] overflow-y-auto`}
+        ref={containerRef}
+        tabIndex={-1}
+        className={`relative w-full ${maxWidthClasses[maxWidth]} rounded-3xl border border-[#DCE5DF] bg-white dark:bg-[#0E2020] p-6 shadow-2xl my-8 max-h-[90vh] overflow-y-auto focus:outline-hidden`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-start justify-between pb-3 mb-3 border-b border-[#DCE5DF]/60">
+        <div className="flex items-start justify-between pb-3 mb-3 border-b border-[#DCE5DF]/60 dark:border-[#1A3937]">
           <div>
-            <h2 id="dialog-title" className="text-lg font-bold text-[#152C2B] tracking-tight">
+            <h2 id="dialog-title" className="text-lg font-bold text-[#152C2B] dark:text-[#EEF8F6] tracking-tight">
               {title}
             </h2>
             {description && (
-              <p id="dialog-description" className="text-xs text-[#526564] mt-0.5">
+              <p id="dialog-description" className="text-xs text-[#526564] dark:text-[#8EA8A5] mt-0.5">
                 {description}
               </p>
             )}
@@ -71,7 +76,7 @@ export function Dialog({
           <button
             type="button"
             onClick={() => onOpenChange(false)}
-            className="rounded-lg p-1.5 text-[#526564] hover:bg-[#F6F5EF] hover:text-[#152C2B] transition cursor-pointer"
+            className="rounded-lg p-1.5 text-[#526564] dark:text-[#8EA8A5] hover:bg-[#F6F5EF] dark:hover:bg-[#152C2B] hover:text-[#152C2B] dark:hover:text-[#EEF8F6] transition cursor-pointer"
             aria-label="Close dialog"
           >
             <X className="h-4 w-4" />

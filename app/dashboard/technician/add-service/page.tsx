@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
-import { Wrench, Tag, DollarSign, Clock, MapPin, FileText, Loader2, ArrowLeft, Upload, CheckCircle2, AlertCircle } from "lucide-react";
+import { Wrench, Tag, DollarSign, Clock, MapPin, FileText, Loader2, ArrowLeft, Upload, CheckCircle2, AlertCircle, Crown } from "lucide-react";
 import Link from "next/link";
 import { apiRequest, apiClient } from "@/lib/api/client";
 import { authClient } from "@/lib/auth-client";
@@ -142,8 +142,22 @@ export default function AddServicePage() {
       </div>
 
       {errorMsg && (
-        <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-xs font-semibold text-rose-700">
-          {errorMsg}
+        <div className="rounded-2xl border border-rose-200 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-500/10 p-5 text-xs text-rose-800 dark:text-rose-300 space-y-3">
+          <div className="flex items-start gap-2.5">
+            <AlertCircle className="h-5 w-5 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
+            <div className="flex-1 font-semibold leading-relaxed">{errorMsg}</div>
+          </div>
+          {errorMsg.toLowerCase().includes("pro") && (
+            <div className="pt-1">
+              <Link
+                href="/dashboard/technician/subscription"
+                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 px-4 py-2 text-xs font-bold text-white hover:from-amber-600 hover:to-amber-700 transition shadow-sm"
+              >
+                <Crown className="h-4 w-4 fill-white" />
+                <span>Upgrade to FixMate Pro ($29/mo)</span>
+              </Link>
+            </div>
+          )}
         </div>
       )}
 

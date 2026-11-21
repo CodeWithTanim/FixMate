@@ -26,5 +26,22 @@ export default async function PaymentLayout({
     else redirect("/dashboard/technician");
   }
 
+  // Prevent direct navigation: customer can only visit with legitimate checkout callback parameters
+  const params = new URLSearchParams(search);
+  if (pathname.includes("/payment/success")) {
+    const sessionId = params.get("session_id");
+    const bookingId = params.get("booking_id");
+    if (!sessionId || !bookingId) {
+      redirect("/dashboard/customer/bookings");
+    }
+  }
+
+  if (pathname.includes("/payment/cancel")) {
+    const bookingId = params.get("booking_id");
+    if (!bookingId) {
+      redirect("/dashboard/customer/bookings");
+    }
+  }
+
   return <>{children}</>;
 }

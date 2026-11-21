@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
   Wrench,
@@ -18,10 +19,12 @@ import {
   Menu,
   X,
   ExternalLink,
+  Crown,
 } from "lucide-react";
 import { signOutUser } from "@/lib/api/client";
 import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
+import ThemeToggle from "./ThemeToggle";
 
 interface DashboardSidebarProps {
   user: {
@@ -85,6 +88,7 @@ export default function DashboardSidebar({ user }: DashboardSidebarProps) {
           { name: "Repair Requests", href: "/dashboard/technician/requests", icon: Briefcase },
           { name: "My Services", href: "/dashboard/technician/my-services", icon: ListOrdered },
           { name: "Add Service", href: "/dashboard/technician/add-service", icon: PlusCircle },
+          { name: "Pro Membership", href: "/dashboard/technician/subscription", icon: Crown },
           { name: "My Profile", href: "/dashboard/profile", icon: User },
         ];
       case "admin":
@@ -118,9 +122,13 @@ export default function DashboardSidebar({ user }: DashboardSidebarProps) {
           onClick={() => setMobileOpen(false)}
           className="flex items-center gap-2.5 group"
         >
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#18756B] text-white shadow-md group-hover:bg-[#135d55] transition">
-            <Wrench className="h-5 w-5 text-[#F4B740]" />
-          </div>
+          <Image
+            src="/logo.png"
+            alt="FixMate Logo"
+            width={38}
+            height={38}
+            className="rounded-xl shadow-md group-hover:scale-105 transition-transform object-contain"
+          />
           <div>
             <span className="text-xl font-black tracking-tight text-white">
               Fix<span className="text-[#F4B740]">Mate</span>
@@ -222,13 +230,16 @@ export default function DashboardSidebar({ user }: DashboardSidebarProps) {
           </span>
         </Link>
 
-        <button
-          onClick={() => setMobileOpen(!mobileOpen)}
-          className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white transition cursor-pointer"
-          aria-label="Toggle Dashboard Menu"
-        >
-          {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-        </button>
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <button
+            onClick={() => setMobileOpen(!mobileOpen)}
+            className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white transition cursor-pointer"
+            aria-label="Toggle Dashboard Menu"
+          >
+            {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
+        </div>
       </div>
 
       {/* Mobile Drawer Overlay */}

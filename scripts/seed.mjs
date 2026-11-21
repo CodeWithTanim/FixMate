@@ -376,14 +376,24 @@ async function runSeed() {
   const seededServiceIds = [];
 
   for (const s of servicesData) {
+    if (!s.technicianId) {
+      console.log(`Skipping service '${s.title}': technician demo user was not created.`);
+      continue;
+    }
+
+    const fixtureKey = s.fixtureKey || `demo-service-${s.category.toLowerCase().replace(/[^a-z0-9]/g, '_')}-${idx}`;
+
     const existing = await servicesCol.findOne({
-      title: s.title,
-      technicianEmail: s.technicianEmail,
+      $or: [
+        { fixtureKey },
+        { title: s.title, technicianEmail: s.technicianEmail },
+      ],
     });
 
     if (!existing) {
       const doc = {
         ...s,
+        fixtureKey,
         area: s.serviceArea,
         isDemoSeed: true,
         createdAt: new Date(),
@@ -392,16 +402,17 @@ async function runSeed() {
       const res = await servicesCol.insertOne(doc);
       seededServiceIds.push({ id: res.insertedId.toString(), title: s.title, service: doc });
       console.log(`Seeded service: ${s.title} (${s.category})`);
-    } else {
+    } else if (existing.isDemoSeed) {
       seededServiceIds.push({ id: existing._id.toString(), title: s.title, service: existing });
-      // Only set isDemoSeed marker if missing; DO NOT reset approvalStatus or availability!
-      if (!existing.isDemoSeed || !existing.area) {
-        await servicesCol.updateOne(
-          { _id: existing._id },
-          { $set: { isDemoSeed: true, area: existing.serviceArea || s.serviceArea } }
-        );
+      const updates = {};
+      if (!existing.fixtureKey) updates.fixtureKey = fixtureKey;
+      if (!existing.area) updates.area = existing.serviceArea || s.serviceArea;
+      if (Object.keys(updates).length > 0) {
+        await servicesCol.updateOne({ _id: existing._id }, { $set: updates });
       }
-      console.log(`Preserved existing service status & availability: ${s.title}`);
+      console.log(`Preserved existing demo service status & availability: ${s.title}`);
+    } else {
+      console.log(`Skipping non-demo service with matching title/key: ${s.title}`);
     }
   }
 
@@ -413,13 +424,31 @@ async function runSeed() {
   const customerPhone = "+1 (555) 123-4567";
   const serviceAddress = "House 42, Road 11, Block D, Banani, Dhaka";
 
+  function getDhakaCalendarDate(offsetDays = 0) {
+    const d = new Date(Date.now() + offsetDays * 86400000);
+    const formatter = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Dhaka",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
+    return formatter.format(d);
+  }
+
+  const servicesByTitle = new Map();
+  for (const item of seededServiceIds) {
+    if (item.service?.title) {
+      servicesByTitle.set(item.service.title, item.service);
+    }
+  }
+
   if (!customerId) {
     console.log("Customer demo user unavailable; skipping dependent booking fixtures.");
-  } else if (seededServiceIds.length >= 6) {
-    const demoBookings = [
+  } else {
+    const demoBookingSpecs = [
       // 1: Requested
       {
-        service: seededServiceIds[0].service,
+        serviceTitle: "Smartphone OLED Screen & Glass Replacement",
         status: "requested",
         paymentStatus: "unpaid",
         problemDescription: "Screen glass cracked after dropping on tiled floor. Touch sensor works but top glass has sharp fractures.",
@@ -431,7 +460,7 @@ async function runSeed() {
       },
       // 2: Accepted
       {
-        service: seededServiceIds[2].service,
+        serviceTitle: "Laptop Thermal Paste & Cooling Fan Servicing",
         status: "accepted",
         paymentStatus: "unpaid",
         problemDescription: "Laptop fan makes loud grinding noise and keyboard surface gets uncomfortably hot after 15 minutes of use.",
@@ -444,7 +473,7 @@ async function runSeed() {
       },
       // 3: In-Progress
       {
-        service: seededServiceIds[4].service,
+        serviceTitle: "Split AC Chemical Deep Cleaning & Gas Refill",
         status: "in-progress",
         paymentStatus: "unpaid",
         problemDescription: "Master bedroom 1.5 ton AC is blowing room-temperature air with weak airflow and mild mildew smell.",
@@ -458,7 +487,7 @@ async function runSeed() {
       },
       // 4: Completed & Unpaid (Ready for customer to test Stripe payment!)
       {
-        service: seededServiceIds[6].service,
+        serviceTitle: "Refrigerator Compressor & Defrost Diagnostics",
         status: "completed",
         paymentStatus: "unpaid",
         problemDescription: "Fridge compartment not cooling food while freezer is freezing over excessively with thick ice accumulation.",
@@ -473,7 +502,7 @@ async function runSeed() {
       },
       // 5: Cancelled
       {
-        service: seededServiceIds[8].service,
+        serviceTitle: "Smart TV Motherboard & Backlight LED Repair",
         status: "cancelled",
         paymentStatus: "unpaid",
         problemDescription: "Living room LED TV has horizontal flickering lines across upper panel during sports broadcast.",
@@ -486,7 +515,7 @@ async function runSeed() {
       },
       // 6: Rejected
       {
-        service: seededServiceIds[10].service,
+        serviceTitle: "Automatic Washing Machine Drum & Drainage Repair",
         status: "rejected",
         paymentStatus: "unpaid",
         problemDescription: "Washing machine won't drain and shows error code OE. Suspect coin stuck in drainage filter.",
@@ -499,38 +528,44 @@ async function runSeed() {
       },
     ];
 
-    for (let i = 0; i < demoBookings.length; i++) {
-      const b = demoBookings[i];
-      const fixtureKey = `demo-booking-${i}-${b.service.title}`;
+    for (let i = 0; i < demoBookingSpecs.length; i++) {
+      const b = demoBookingSpecs[i];
+      const service = servicesByTitle.get(b.serviceTitle);
+      if (!service) {
+        console.log(`Skipping demo booking fixture ${i}: service dependency '${b.serviceTitle}' not available.`);
+        continue;
+      }
+
+      const fixtureKey = `demo-booking-${i}-${service.title}`;
 
       const existingBooking = await bookingsCol.findOne({
         $or: [
           { fixtureKey },
-          { customerEmail, serviceTitle: b.service.title, status: b.status },
+          { customerEmail, serviceTitle: service.title, isDemoSeed: true },
         ],
       });
 
       if (!existingBooking) {
-        const preferredDate = new Date();
-        preferredDate.setDate(preferredDate.getDate() + b.daysFromNow);
+        // Generate explicit Asia/Dhaka calendar YYYY-MM-DD representation
+        const preferredDateStr = getDhakaCalendarDate(b.daysFromNow);
 
         const bookingDoc = {
           fixtureKey,
-          serviceId: b.service._id.toString(),
-          serviceTitle: b.service.title,
-          serviceCategory: b.service.category,
-          serviceImage: b.service.image,
-          basePrice: b.service.basePrice,
+          serviceId: service._id.toString(),
+          serviceTitle: service.title,
+          serviceCategory: service.category,
+          serviceImage: service.image,
+          basePrice: service.basePrice,
           finalAmount: b.finalAmount,
-          technicianId: b.service.technicianId,
-          technicianName: b.service.technicianName,
-          technicianEmail: b.service.technicianEmail,
+          technicianId: service.technicianId,
+          technicianName: service.technicianName,
+          technicianEmail: service.technicianEmail,
           customerId,
           customerName,
           customerEmail,
           customerPhone,
           serviceAddress,
-          preferredDate,
+          preferredDate: preferredDateStr,
           problemDescription: b.problemDescription,
           status: b.status,
           paymentStatus: b.paymentStatus,
@@ -541,9 +576,12 @@ async function runSeed() {
         };
 
         await bookingsCol.insertOne(bookingDoc);
-        console.log(`Seeded demo booking: ${b.service.title} (${b.status})`);
+        console.log(`Seeded demo booking: ${service.title} (${b.status})`);
       } else {
-        console.log(`Preserved existing booking fixture: ${b.service.title} (${existingBooking.status})`);
+        if (!existingBooking.fixtureKey) {
+          await bookingsCol.updateOne({ _id: existingBooking._id }, { $set: { fixtureKey } });
+        }
+        console.log(`Preserved existing demo booking fixture: ${service.title} (${existingBooking.status})`);
       }
     }
   }

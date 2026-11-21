@@ -12,6 +12,11 @@ import {
   CheckCircle2,
   Shield,
   Loader2,
+  Lock,
+  KeyRound,
+  Eye,
+  EyeOff,
+  AlertCircle,
 } from "lucide-react";
 import { apiClient } from "@/lib/api/client";
 import { authClient } from "@/lib/auth-client";
@@ -32,6 +37,8 @@ export default function ProfilePage() {
   const router = useRouter();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
   const [saving, setSaving] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
 
@@ -42,10 +49,22 @@ export default function ProfilePage() {
   const [bio, setBio] = useState("");
   const [image, setImage] = useState("");
 
+  // Password change states
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState("");
+
   useEffect(() => {
     let active = true;
     const fetchProfile = async () => {
       try {
+        setLoading(true);
+        setFetchError(null);
         const res = await apiClient.get<{ user: UserProfile }>("/api/me");
         if (active) {
           const u = res.user;
@@ -59,7 +78,9 @@ export default function ProfilePage() {
       } catch (err: unknown) {
         if (active) {
           const error = err as { message?: string };
-          toast.error(error.message || "Failed to load profile");
+          const msg = error.message || "Failed to load profile";
+          toast.error(msg);
+          setFetchError(msg);
         }
       } finally {
         if (active) {
@@ -72,7 +93,7 @@ export default function ProfilePage() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [refreshKey]);
 
   const handleImageFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -107,6 +128,11 @@ export default function ProfilePage() {
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!profile) {
+      toast.error("Profile is not loaded yet");
+      return;
+    }
 
     if (!name.trim()) {
       toast.error("Name cannot be empty");
@@ -150,11 +176,101 @@ export default function ProfilePage() {
     }
   };
 
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordError("");
+
+    if (!currentPassword) {
+      setPasswordError("Please enter your current password.");
+      return;
+    }
+
+    if (!newPassword) {
+      setPasswordError("Please enter your new password.");
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      setPasswordError("New password must be at least 6 characters long.");
+      return;
+    }
+
+    if (!/[A-Z]/.test(newPassword) || !/[a-z]/.test(newPassword)) {
+      setPasswordError("New password must contain at least one uppercase letter (A-Z) and one lowercase letter (a-z).");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setPasswordError("New password and confirm password do not match.");
+      return;
+    }
+
+    if (currentPassword === newPassword) {
+      setPasswordError("New password cannot be the same as your current password.");
+      return;
+    }
+
+    const toastId = toast.loading("Updating password...");
+    setChangingPassword(true);
+
+    try {
+      const res = await authClient.changePassword({
+        currentPassword,
+        newPassword,
+        revokeOtherSessions: true,
+      });
+
+      if (res.error) {
+        const msg = res.error.message || "Failed to update password. Please check your current password.";
+        setPasswordError(msg);
+        toast.error(msg, { id: toastId });
+        setChangingPassword(false);
+        return;
+      }
+
+      toast.success("Password changed successfully! Other active sessions revoked.", { id: toastId });
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setPasswordError("");
+    } catch (err: unknown) {
+      const error = err as { message?: string };
+      const msg = error.message || "An unexpected error occurred while changing password.";
+      setPasswordError(msg);
+      toast.error(msg, { id: toastId });
+    } finally {
+      setChangingPassword(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="max-w-2xl mx-auto space-y-4">
         <div className="h-8 w-48 bg-slate-200 rounded-lg animate-pulse" />
         <div className="h-64 bg-white rounded-2xl border border-[#DCE5DF] animate-pulse" />
+      </div>
+    );
+  }
+
+  if (fetchError && !profile) {
+    return (
+      <div className="max-w-xl mx-auto py-12 px-4">
+        <div className="rounded-2xl border border-rose-200 dark:border-rose-900/50 bg-rose-50/70 dark:bg-rose-950/20 p-6 text-center space-y-4">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-100 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400">
+            <AlertCircle className="h-6 w-6" />
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-rose-950 dark:text-rose-200">Failed to Load Profile</h3>
+            <p className="text-xs text-rose-800 dark:text-rose-300/80 mt-1">{fetchError}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setRefreshKey((k) => k + 1)}
+            className="inline-flex items-center gap-2 rounded-xl bg-rose-600 text-white px-4 py-2 text-xs font-bold hover:bg-rose-700 transition cursor-pointer"
+          >
+            Retry Loading Profile
+          </button>
+        </div>
       </div>
     );
   }
@@ -335,6 +451,139 @@ export default function ProfilePage() {
           </div>
         </div>
       </form>
+
+      {/* Security & Password Change Card */}
+      <div className="rounded-2xl border border-[#DCE5DF] bg-white p-6 shadow-2xs space-y-4">
+        <div className="flex items-center gap-2.5 border-b border-[#DCE5DF] pb-3">
+          <div className="p-2 rounded-xl bg-[#18756B]/10 text-[#18756B]">
+            <KeyRound className="h-4 w-4" />
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-[#152C2B]">Account Security & Password</h3>
+            <p className="text-[11px] text-[#526564]">
+              Change your password to protect your account. All other active sessions will be revoked.
+            </p>
+          </div>
+        </div>
+
+        {passwordError && (
+          <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700 flex items-center gap-2">
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            <span>{passwordError}</span>
+          </div>
+        )}
+
+        <form onSubmit={handleChangePassword} className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {/* Current Password */}
+            <div>
+              <label htmlFor="current-password" className="text-xs font-bold text-[#152C2B] flex items-center gap-1.5 mb-1">
+                <Lock className="h-3.5 w-3.5 text-[#18756B]" />
+                <span>Current Password *</span>
+              </label>
+              <div className="relative">
+                <input
+                  id="current-password"
+                  type={showCurrentPassword ? "text" : "password"}
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  placeholder="Enter current password"
+                  required
+                  autoComplete="current-password"
+                  className="w-full rounded-xl border border-[#DCE5DF] p-3 pr-10 text-xs text-[#152C2B] focus:border-[#18756B] focus:outline-hidden"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition cursor-pointer"
+                  tabIndex={-1}
+                >
+                  {showCurrentPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+
+            {/* New Password */}
+            <div>
+              <label htmlFor="new-password" className="text-xs font-bold text-[#152C2B] flex items-center gap-1.5 mb-1">
+                <Lock className="h-3.5 w-3.5 text-[#18756B]" />
+                <span>New Password *</span>
+              </label>
+              <div className="relative">
+                <input
+                  id="new-password"
+                  type={showNewPassword ? "text" : "password"}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Min 6 chars, A-Z and a-z"
+                  required
+                  autoComplete="new-password"
+                  className="w-full rounded-xl border border-[#DCE5DF] p-3 pr-10 text-xs text-[#152C2B] focus:border-[#18756B] focus:outline-hidden"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowNewPassword(!showNewPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition cursor-pointer"
+                  tabIndex={-1}
+                >
+                  {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+
+            {/* Confirm New Password */}
+            <div>
+              <label htmlFor="confirm-password" className="text-xs font-bold text-[#152C2B] flex items-center gap-1.5 mb-1">
+                <Lock className="h-3.5 w-3.5 text-[#18756B]" />
+                <span>Confirm New Password *</span>
+              </label>
+              <div className="relative">
+                <input
+                  id="confirm-password"
+                  type={showConfirmPassword ? "text" : "password"}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Re-type new password"
+                  required
+                  autoComplete="new-password"
+                  className="w-full rounded-xl border border-[#DCE5DF] p-3 pr-10 text-xs text-[#152C2B] focus:border-[#18756B] focus:outline-hidden"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition cursor-pointer"
+                  tabIndex={-1}
+                >
+                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2">
+            <p className="text-[11px] text-[#526564]">
+              Password must be at least 6 characters with uppercase (A-Z) and lowercase (a-z) letters.
+            </p>
+            <button
+              type="submit"
+              disabled={changingPassword || !currentPassword || !newPassword || !confirmPassword}
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#0B3638] px-6 py-2.5 text-xs font-bold text-white hover:bg-[#135d55] transition shadow-xs cursor-pointer disabled:opacity-50"
+            >
+              {changingPassword ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Updating Password...</span>
+                </>
+              ) : (
+                <>
+                  <KeyRound className="h-4 w-4" />
+                  <span>Change Password</span>
+                </>
+              )}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }

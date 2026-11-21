@@ -3,7 +3,7 @@ import { ArrowLeft, ShieldCheck, Scale } from "lucide-react";
 
 export default function TermsPage() {
   return (
-    <div className="min-h-screen bg-[#F6F5EF] py-12 px-4 sm:px-6 lg:px-8">
+    <div className="py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-3xl mx-auto space-y-8">
         <Link
           href="/"

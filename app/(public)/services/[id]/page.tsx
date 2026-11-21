@@ -1,8 +1,9 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getServiceById } from "@/lib/api/services";
-import { MapPin, Clock, ShieldCheck, Tag, ArrowLeft, CheckCircle2, AlertCircle, Wrench } from "lucide-react";
+import { MapPin, Clock, ShieldCheck, Tag, ArrowLeft, CheckCircle2, AlertCircle, Wrench, Crown } from "lucide-react";
 import BookingRequestModal from "@/components/BookingRequestModal";
+import ServiceReviewsList from "@/components/ServiceReviewsList";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import type { UserProfile } from "@/types";
@@ -130,6 +131,9 @@ export default async function ServiceDetailsPage(props: {
               The base price of <strong>${service.basePrice}</strong> covers initial diagnostic inspection and standard labor. Any replacement parts required will be confirmed and agreed upon with you before completing work.
             </p>
           </div>
+
+          {/* Customer Ratings & Reviews */}
+          <ServiceReviewsList serviceId={id} />
         </div>
 
         {/* Right Summary / Request Action Card */}
@@ -160,8 +164,16 @@ export default async function ServiceDetailsPage(props: {
                   </div>
                 )}
                 <div className="min-w-0 flex-1">
-                  <div className="text-xs font-bold text-[#152C2B] truncate">
-                    {service.technician?.name || service.technicianName}
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-xs font-bold text-[#152C2B] truncate">
+                      {service.technician?.name || service.technicianName}
+                    </span>
+                    {service.isProTechnician && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-linear-to-r from-amber-500 to-amber-600 px-2 py-0.2 text-[9px] font-black text-white shadow-2xs">
+                        <Crown className="h-2.5 w-2.5 fill-white" />
+                        <span>PRO</span>
+                      </span>
+                    )}
                   </div>
                   <div className="text-[10px] text-[#526564] flex items-center gap-1">
                     <CheckCircle2 className="h-3 w-3 text-emerald-600 shrink-0" />
@@ -189,7 +201,7 @@ export default async function ServiceDetailsPage(props: {
               {!currentUser ? (
                 <div className="space-y-3">
                   <Link
-                    href={`/sign-in?callbackUrl=/services/${service.id || service._id}`}
+                    href={`/sign-in?callbackUrl=${encodeURIComponent(`/services/${service.id || service._id}?request=true`)}`}
                     className="w-full flex items-center justify-center gap-2 rounded-xl bg-[#18756B] py-3 text-sm font-bold text-white hover:bg-[#135d55] transition"
                   >
                     <span>Sign In to Request Repair</span>

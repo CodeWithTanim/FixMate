@@ -16,6 +16,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { apiClient } from "@/lib/api/client";
+import { formatCalendarDate } from "@/lib/utils";
 import toast from "react-hot-toast";
 import JobTimelineModal, { StatusHistoryItem } from "@/components/JobTimelineModal";
 
@@ -43,6 +44,7 @@ interface BookingRequest {
 export default function TechnicianRequestsPage() {
   const [requests, setRequests] = useState<BookingRequest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState("all");
 
   // Rejection modal state
@@ -63,6 +65,8 @@ export default function TechnicianRequestsPage() {
     let active = true;
     const fetchRequests = async () => {
       try {
+        setLoading(true);
+        setFetchError(null);
         const res = await apiClient.get<{ data: BookingRequest[] }>("/api/bookings/technician");
         if (active) {
           setRequests(res.data || []);
@@ -70,7 +74,9 @@ export default function TechnicianRequestsPage() {
       } catch (err: unknown) {
         if (active) {
           const error = err as { message?: string };
-          toast.error(error.message || "Failed to load requests");
+          const msg = error.message || "Failed to load requests";
+          toast.error(msg);
+          setFetchError(msg);
         }
       } finally {
         if (active) {
@@ -180,6 +186,23 @@ export default function TechnicianRequestsPage() {
             <div key={i} className="h-44 rounded-2xl bg-white border border-[#DCE5DF] animate-pulse" />
           ))}
         </div>
+      ) : fetchError ? (
+        <div className="rounded-2xl border border-rose-200 dark:border-rose-900/50 bg-rose-50/70 dark:bg-rose-950/20 p-8 text-center space-y-4">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-100 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400">
+            <Clock className="h-6 w-6" />
+          </div>
+          <div>
+            <h3 className="text-base font-bold text-rose-950 dark:text-rose-200">Failed to Load Repair Requests</h3>
+            <p className="text-xs text-rose-800 dark:text-rose-300/80 mt-1 max-w-md mx-auto">{fetchError}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setRefreshKey((k) => k + 1)}
+            className="inline-flex items-center gap-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white px-5 py-2.5 text-xs font-bold transition shadow-xs cursor-pointer"
+          >
+            Retry Loading Requests
+          </button>
+        </div>
       ) : filteredRequests.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-[#DCE5DF] bg-white p-12 text-center">
           <Clock className="mx-auto h-10 w-10 text-[#526564]/40 mb-3" />
@@ -246,9 +269,7 @@ export default function TechnicianRequestsPage() {
                     </span>
                     <span className="flex items-center gap-1.5">
                       <Calendar className="h-3.5 w-3.5 text-[#18756B]" />
-                      <span>
-                        Appt: {new Date(r.preferredDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-                      </span>
+                      <span>Appt: {formatCalendarDate(r.preferredDate)}</span>
                     </span>
                     <span className="flex items-center gap-1.5">
                       <MapPin className="h-3.5 w-3.5 text-[#18756B]" />

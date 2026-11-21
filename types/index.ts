@@ -9,6 +9,8 @@ export interface UserProfile {
   phone?: string | null;
   area?: string | null;
   bio?: string | null;
+  isPro?: boolean;
+  proTier?: string;
   createdAt?: string;
 }
 
@@ -46,5 +48,8 @@ export interface ServiceItem {
   };
   approvalStatus: "pending" | "approved" | "rejected";
   isAvailable: boolean;
+  isProTechnician?: boolean;
+  rating?: number;
+  reviewCount?: number;
   createdAt: string;
 }

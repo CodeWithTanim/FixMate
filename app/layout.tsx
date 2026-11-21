@@ -27,6 +27,10 @@ export const metadata: Metadata = {
     locale: "en_US",
     siteName: "FixMate",
   },
+  icons: {
+    icon: "/favicon.png",
+    apple: "/logo.png",
+  },
 };
 
 export default function RootLayout({
@@ -35,7 +39,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('fixmate-theme');if(t==='dark'){document.documentElement.classList.add('dark');}else{document.documentElement.classList.remove('dark');}}catch(e){}})()`,
+          }}
+        />
+      </head>
       <body className="antialiased flex flex-col min-h-screen">
         <Toaster position="top-right" toastOptions={{ duration: 4000 }} />
         {children}

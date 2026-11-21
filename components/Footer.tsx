@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { Wrench, Mail, Phone, MapPin, Clock } from "lucide-react";
+import Image from "next/image";
+import { Mail, Phone, MapPin, Clock } from "lucide-react";
 
 export default function Footer() {
   const categories = [
@@ -19,9 +20,13 @@ export default function Footer() {
           {/* Brand & mission */}
           <div className="space-y-4">
             <Link href="/" className="flex items-center gap-2.5">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#F4B740] text-[#152C2B] font-bold">
-                <Wrench className="h-5 w-5" />
-              </div>
+              <Image
+                src="/logo.png"
+                alt="FixMate Logo"
+                width={38}
+                height={38}
+                className="rounded-xl shadow-xs object-contain"
+              />
               <span className="text-xl font-bold tracking-tight text-white">
                 Fix<span className="text-[#F4B740]">Mate</span>
               </span>

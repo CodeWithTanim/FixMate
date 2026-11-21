@@ -14,6 +14,7 @@ import {
   X,
 } from "lucide-react";
 import { apiClient } from "@/lib/api/client";
+import { useFocusTrap } from "@/lib/useFocusTrap";
 import toast from "react-hot-toast";
 
 interface CustomerPayment {
@@ -34,22 +35,29 @@ export default function CustomerPaymentsPage() {
   const [payments, setPayments] = useState<CustomerPayment[]>([]);
   const [selectedReceipt, setSelectedReceipt] = useState<CustomerPayment | null>(null);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const receiptModalRef = useFocusTrap(Boolean(selectedReceipt));
 
   useEffect(() => {
     async function loadPayments() {
       try {
         setLoading(true);
+        setFetchError(null);
         const res = await apiClient.get<{ data: CustomerPayment[] }>("/api/payments/my");
         setPayments(res.data || []);
       } catch (err: unknown) {
         const error = err as { message?: string };
-        toast.error(error.message || "Failed to load payment receipts");
+        const msg = error.message || "Failed to load payment receipts";
+        toast.error(msg);
+        setFetchError(msg);
       } finally {
         setLoading(false);
       }
     }
     loadPayments();
-  }, []);
+  }, [refreshKey]);
 
   const totalSpent = payments.reduce((sum, p) => sum + (p.amount || 0), 0);
 
@@ -95,6 +103,23 @@ export default function CustomerPaymentsPage() {
           {[1, 2].map((i) => (
             <div key={i} className="h-20 rounded-xl bg-white border border-[#DCE5DF] animate-pulse" />
           ))}
+        </div>
+      ) : fetchError ? (
+        <div className="rounded-2xl border border-rose-200 dark:border-rose-900/50 bg-rose-50/70 dark:bg-rose-950/20 p-8 text-center space-y-4">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-100 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400">
+            <CreditCard className="h-6 w-6" />
+          </div>
+          <div>
+            <h3 className="text-base font-bold text-rose-950 dark:text-rose-200">Payment History Unavailable</h3>
+            <p className="text-xs text-rose-800 dark:text-rose-300/80 mt-1 max-w-md mx-auto">{fetchError}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setRefreshKey((k) => k + 1)}
+            className="inline-flex items-center gap-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white px-5 py-2.5 text-xs font-bold transition shadow-xs cursor-pointer"
+          >
+            Retry Loading Receipts
+          </button>
         </div>
       ) : payments.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-[#DCE5DF] bg-white p-12 text-center">
@@ -165,18 +190,32 @@ export default function CustomerPaymentsPage() {
 
       {/* Printable Receipt Modal */}
       {selectedReceipt && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
-          <div className="relative w-full max-w-md rounded-3xl border border-[#DCE5DF] bg-white p-6 sm:p-8 shadow-2xl space-y-6">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="receipt-dialog-title"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setSelectedReceipt(null);
+          }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs"
+        >
+          <div
+            ref={receiptModalRef}
+            tabIndex={-1}
+            className="relative w-full max-w-md rounded-3xl border border-[#DCE5DF] bg-white p-6 sm:p-8 shadow-2xl space-y-6 focus:outline-hidden"
+          >
             <div className="flex items-start justify-between border-b border-[#DCE5DF] pb-4">
               <div>
                 <span className="text-[10px] font-bold uppercase tracking-wider text-[#18756B]">
                   Official Settlement Receipt
                 </span>
-                <h3 className="text-lg font-black text-[#152C2B]">FixMate Repair Invoice</h3>
+                <h3 id="receipt-dialog-title" className="text-lg font-black text-[#152C2B]">FixMate Repair Invoice</h3>
               </div>
               <button
+                type="button"
                 onClick={() => setSelectedReceipt(null)}
-                className="p-1 rounded-lg text-[#526564] hover:bg-[#F6F5EF]"
+                aria-label="Close receipt dialog"
+                className="p-1 rounded-lg text-[#526564] hover:bg-[#F6F5EF] cursor-pointer"
               >
                 <X className="h-5 w-5" />
               </button>

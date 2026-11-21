@@ -1,5 +1,7 @@
 # FixMate Client
 
+**Deployment Target**: [https://fixmate-nine.vercel.app](https://fixmate-nine.vercel.app) *(Deployment pending evaluation authorization / push hold)*
+
 FixMate is an on-demand electronic device and home appliance repair marketplace connecting customers with vetted local repair technicians. Customers discover services across 7 specialized repair categories, schedule appointments, track repair lifecycle milestones, and pay securely only after verified repair completion.
 
 ## Key Features
@@ -95,11 +97,15 @@ Configure these variables in your deployment settings or private local `.env.loc
 | `JWT_AUDIENCE` | Server (Private) | Expected token audience (`fixmate-api`) |
 | `DEMO_USER_PASSWORD` | Seed Script (Private) | Password configured when running `npm run seed` to initialize demo accounts |
 
-## Demo Credentials
+## Demo Accounts
 
-Demo accounts can be initialized idempotently using `npm run seed`. Set `DEMO_USER_PASSWORD` in your private `.env.local` file before running the seed script. For evaluator access to an existing pre-seeded database, obtain the active credentials securely from the private evaluation handoff.
+The following demo accounts are configured for evaluation and multi-role testing:
 
-- **Customer**: `customer@fixmate.dev`
-- **Technician 1**: `rahim.tech@fixmate.dev`
-- **Technician 2**: `sarah.appliances@fixmate.dev`
-- **Admin**: `admin@fixmate.dev`
+| Role | Email | Service Area / Portal |
+| :--- | :--- | :--- |
+| **Admin** | `admin@fixmate.dev` | Full platform administration, service moderation, role management |
+| **Technician 1** | `rahim.tech@fixmate.dev` | Smartphone & Laptop specialist (Dhaka Central) |
+| **Technician 2** | `sarah.appliances@fixmate.dev` | Refrigerator & AC specialist (Banani & Gulshan) |
+| **Customer** | `customer@fixmate.dev` | Customer account with booking history and payment flows |
+
+*Note: For evaluator access, demo accounts can be initialized idempotently using `npm run seed` with `DEMO_USER_PASSWORD` configured in your private `.env` file, or obtained securely from the private evaluation handoff.*
