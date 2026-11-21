@@ -244,16 +244,25 @@ export default function CustomerBookingsPage() {
                       >
                         {b.status}
                       </span>
-                      <span
-                        className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider border ${
-                          b.paymentStatus === "paid"
-                            ? "bg-emerald-50 text-emerald-800 border-emerald-200"
-                            : "bg-amber-50 text-amber-800 border-amber-200"
-                        }`}
-                      >
-                        {b.paymentStatus === "paid" ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
-                        <span>{b.paymentStatus === "paid" ? "Paid" : "Payment Due"}</span>
-                      </span>
+                      {b.paymentStatus === "paid" ? (
+                        <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider border bg-emerald-50 text-emerald-800 border-emerald-200">
+                          <CheckCircle2 className="h-3 w-3" />
+                          <span>Paid</span>
+                        </span>
+                      ) : b.status === "completed" ? (
+                        <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider border bg-amber-50 text-amber-800 border-amber-200">
+                          <Clock className="h-3 w-3" />
+                          <span>Payment Due</span>
+                        </span>
+                      ) : b.status === "cancelled" || b.status === "rejected" ? (
+                        <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider border bg-slate-50 text-slate-500 border-slate-200">
+                          <span>N/A</span>
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider border bg-slate-50 text-slate-600 border-slate-200">
+                          <span>Unpaid</span>
+                        </span>
+                      )}
                     </div>
 
                     <h3 className="text-base font-bold text-[#152C2B]">{b.serviceTitle}</h3>

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
-import { Wrench, Tag, DollarSign, Clock, MapPin, FileText, Image as ImageIcon, Loader2, ArrowLeft, Upload, CheckCircle2, AlertCircle } from "lucide-react";
+import { Wrench, Tag, DollarSign, Clock, MapPin, FileText, Loader2, ArrowLeft, Upload, CheckCircle2, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import { apiRequest, apiClient } from "@/lib/api/client";
 import { authClient } from "@/lib/auth-client";
@@ -89,6 +89,11 @@ export default function AddServicePage() {
       return;
     }
 
+    if (!image) {
+      setErrorMsg("Please upload a genuine photo for this service listing from your device.");
+      return;
+    }
+
     setLoading(true);
     const toastId = toast.loading("Submitting new service listing...");
 
@@ -102,7 +107,7 @@ export default function AddServicePage() {
         estimatedDuration: estimatedDuration.trim(),
         serviceArea: serviceArea.trim(),
         description: description.trim(),
-        image: image.trim() || undefined,
+        image: image.trim(),
       }),
     });
 
@@ -317,19 +322,6 @@ export default function AddServicePage() {
               <span>{uploadNotice}</span>
             </div>
           )}
-
-          {/* Optional Direct URL Fallback */}
-          <div className="relative mt-2">
-            <ImageIcon className="absolute left-3.5 top-3 h-4 w-4 text-[#526564]" />
-            <input
-              id="image"
-              type="text"
-              value={image}
-              onChange={(e) => setImage(e.target.value)}
-              placeholder="Or paste an image URL (optional)"
-              className="w-full rounded-xl border border-[#DCE5DF] py-2 pl-10 pr-3 text-xs text-[#152C2B] focus:border-[#18756B] focus:outline-none focus:ring-1 focus:ring-[#18756B]"
-            />
-          </div>
         </div>
 
         {/* Description */}

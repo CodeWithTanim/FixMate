@@ -129,6 +129,86 @@ export default function AdminDashboard() {
         })}
       </div>
 
+      {/* Visual Analytics Chart: Platform Booking Distribution & Revenue Overview */}
+      <div className="rounded-2xl border border-[#DCE5DF] bg-white p-6 shadow-2xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-[#DCE5DF] pb-4">
+          <div>
+            <h2 className="text-base font-bold text-[#152C2B]">Platform Workflow & Lifecycle Distribution</h2>
+            <p className="text-xs text-[#526564]">System-wide proportions across all repair bookings</p>
+          </div>
+          <div className="flex items-center gap-3 text-xs font-semibold">
+            <span className="flex items-center gap-1.5">
+              <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 inline-block" />
+              <span className="text-[#526564]">Completed ({stats?.completedBookingsCount || 0})</span>
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="h-2.5 w-2.5 rounded-full bg-amber-400 inline-block" />
+              <span className="text-[#526564]">Active ({stats?.activeBookingsCount || 0})</span>
+            </span>
+          </div>
+        </div>
+
+        {/* Visual Proportional Bar */}
+        <div className="space-y-2">
+          {stats && stats.totalBookings > 0 ? (
+            <>
+              <div className="flex h-5 w-full overflow-hidden rounded-full bg-[#F6F5EF] p-0.5 border border-[#DCE5DF]">
+                <div
+                  className="h-full rounded-full bg-emerald-500 transition-all duration-500"
+                  style={{
+                    width: `${Math.max(
+                      5,
+                      Math.round(((stats.completedBookingsCount || 0) / stats.totalBookings) * 100)
+                    )}%`,
+                  }}
+                  title={`Completed: ${stats.completedBookingsCount}`}
+                />
+                <div
+                  className="h-full rounded-full bg-amber-400 transition-all duration-500 ml-0.5"
+                  style={{
+                    width: `${Math.max(
+                      5,
+                      Math.round(((stats.activeBookingsCount || 0) / stats.totalBookings) * 100)
+                    )}%`,
+                  }}
+                  title={`Active: ${stats.activeBookingsCount}`}
+                />
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 text-xs">
+                <div className="p-3 rounded-xl bg-[#F6F5EF]/60 border border-[#DCE5DF]/60">
+                  <span className="text-[10px] text-[#526564] uppercase font-bold">Platform Resolution</span>
+                  <div className="text-lg font-black text-[#152C2B] mt-0.5">
+                    {Math.round(((stats.completedBookingsCount || 0) / stats.totalBookings) * 100)}%
+                  </div>
+                </div>
+                <div className="p-3 rounded-xl bg-[#F6F5EF]/60 border border-[#DCE5DF]/60">
+                  <span className="text-[10px] text-[#526564] uppercase font-bold">Total Platform Users</span>
+                  <div className="text-lg font-black text-[#18756B] mt-0.5">
+                    {stats.totalUsers} registered
+                  </div>
+                </div>
+                <div className="p-3 rounded-xl bg-[#F6F5EF]/60 border border-[#DCE5DF]/60">
+                  <span className="text-[10px] text-[#526564] uppercase font-bold">Active Listings</span>
+                  <div className="text-lg font-black text-[#152C2B] mt-0.5">
+                    {stats.totalServices} catalog items
+                  </div>
+                </div>
+                <div className="p-3 rounded-xl bg-[#F6F5EF]/60 border border-[#DCE5DF]/60">
+                  <span className="text-[10px] text-[#526564] uppercase font-bold">Total Processed</span>
+                  <div className="text-lg font-black text-emerald-700 mt-0.5">
+                    ${stats.totalRevenue.toFixed(2)}
+                  </div>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="py-6 text-center text-xs text-[#526564] italic">
+              No platform bookings recorded yet.
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Recent Platform Bookings & Admin Shortcuts */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Recent Platform Bookings */}
@@ -204,8 +284,8 @@ export default function AdminDashboard() {
               Verify technician credentials before approving service listings. User role promotions take effect on the next session token refresh.
             </p>
             <div className="mt-4 pt-4 border-t border-white/10 flex items-center justify-between text-xs text-white/60">
-              <span>Platform Health:</span>
-              <span className="font-bold text-emerald-300">100% Operational</span>
+              <span>Engine Status:</span>
+              <span className="font-medium text-emerald-300">Core Engine Active • Integrations Standby</span>
             </div>
           </div>
 

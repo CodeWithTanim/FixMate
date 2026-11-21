@@ -224,9 +224,25 @@ export default async function ServicesPage(props: {
           {services.map((service: ServiceItem) => (
             <div
               key={service.id || service._id}
-              className="flex flex-col justify-between rounded-2xl border border-[#DCE5DF] bg-white p-5 shadow-2xs hover:border-[#18756B] hover:shadow-md transition"
+              className="group flex flex-col justify-between rounded-2xl border border-[#DCE5DF] bg-white p-5 shadow-2xs hover:border-[#18756B] hover:shadow-md transition"
             >
               <div className="space-y-3">
+                <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-[#F6F5EF] border border-[#DCE5DF]/60">
+                  {service.image ? (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img
+                      src={service.image}
+                      alt={service.title}
+                      className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center bg-[#18756B]/10 text-[#18756B]">
+                      <Wrench className="h-6 w-6" />
+                    </div>
+                  )}
+                </div>
+
                 <div className="flex items-center justify-between text-xs">
                   <span className="inline-flex items-center gap-1 rounded-full bg-[#18756B]/10 px-2.5 py-0.5 font-bold text-[#18756B]">
                     <Tag className="h-3 w-3" />

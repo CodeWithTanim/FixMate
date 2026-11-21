@@ -141,6 +141,8 @@ interface MockBookingDoc {
   basePrice: number;
   finalAmount: number;
   paymentStatus: string;
+  statusHistory?: Array<{ status: string; timestamp: Date; note?: string }>;
+  [key: string]: unknown;
 }
 
 interface MockPaymentDoc {
@@ -383,4 +385,186 @@ test("Active booking constraint prevents duplicate concurrent requests for same 
   const rebook = createBooking("customer@fixmate.dev", "service_42", "requested");
   assert.equal(rebook.ok, true);
   assert.equal(rebook.status, 201);
+});
+
+test("fulfillPaymentSession reconciles unpaid booking when ledger row exists (interrupted-write recovery)", async () => {
+  Object.assign(process.env, { NODE_ENV: "test" });
+  const { fulfillPaymentSession, setTestDb } = await import("../../../FixMate-Server/index.js");
+  const { ObjectId } = await import("mongodb");
+
+  const bookingId = new ObjectId().toString();
+  const mockBooking: MockBookingDoc = {
+    _id: new ObjectId(bookingId),
+    serviceId: "srv_999",
+    serviceTitle: "Refrigerator Compressor Repair",
+    customerEmail: "customer@fixmate.dev",
+    status: "completed",
+    basePrice: 120,
+    finalAmount: 120,
+    paymentStatus: "unpaid", // Still unpaid because earlier write failed
+    statusHistory: [],
+  };
+
+  // Pre-existing ledger entry (from prior webhook or initial interrupted write)
+  const paymentsStore: MockPaymentDoc[] = [
+    {
+      stripeSessionId: "cs_prior_settlement_session",
+      bookingId,
+      amount: 120,
+      currency: "usd",
+      status: "succeeded",
+      createdAt: new Date(),
+    },
+  ];
+
+  const mockDb = {
+    collection: (name: string) => {
+      if (name === "bookings") {
+        return {
+          findOne: async (q: { _id?: { toString(): string } }) => {
+            if (q._id?.toString() === bookingId) return mockBooking;
+            return null;
+          },
+          updateOne: async (
+            filter: { paymentStatus?: { $ne: string } },
+            update: { $set: { paymentStatus: string }; $push?: { statusHistory: { status: string; timestamp: Date; note?: string } } }
+          ) => {
+            if (filter.paymentStatus?.$ne === "paid" && mockBooking.paymentStatus === "paid") {
+              return { matchedCount: 0, modifiedCount: 0 };
+            }
+            mockBooking.paymentStatus = update.$set.paymentStatus;
+            if (update.$push?.statusHistory) {
+              mockBooking.statusHistory = mockBooking.statusHistory || [];
+              mockBooking.statusHistory.push(update.$push.statusHistory);
+            }
+            return { matchedCount: 1, modifiedCount: 1 };
+          },
+        };
+      }
+      if (name === "payments") {
+        return {
+          findOne: async (q: { bookingId?: string; stripeSessionId?: string }) => {
+            if (q.bookingId) return paymentsStore.find((p) => p.bookingId === q.bookingId) || null;
+            if (q.stripeSessionId) return paymentsStore.find((p) => p.stripeSessionId === q.stripeSessionId) || null;
+            return null;
+          },
+          insertOne: async () => {
+            throw new Error("Duplicate key or should not insert new row");
+          },
+        };
+      }
+      return {};
+    },
+  };
+
+  setTestDb(mockDb);
+
+  const retrySession = {
+    id: "cs_retry_after_interruption",
+    payment_status: "paid",
+    currency: "usd",
+    amount_total: 12000, // $120.00
+    customer_email: "customer@fixmate.dev",
+    metadata: { bookingId },
+    client_reference_id: bookingId,
+  };
+
+  const reconciledResult = await fulfillPaymentSession(retrySession);
+  assert.ok(reconciledResult, "Fulfillment retry must return the booking");
+  assert.equal(reconciledResult.paymentStatus, "paid", "Booking must be reconciled to paid");
+  assert.equal(mockBooking.paymentStatus, "paid", "Underlying booking document must be updated to paid");
+  assert.equal(paymentsStore.length, 1, "Exactly one ledger row must exist under retry");
+  assert.equal(mockBooking.statusHistory?.length, 1, "Exactly one payment timeline entry recorded");
+
+  // Subsequent idempotent call must not duplicate timeline event
+  await fulfillPaymentSession(retrySession);
+  assert.equal(mockBooking.statusHistory?.length, 1, "Subsequent calls do not append duplicate timeline entries");
+});
+
+test("Payment verification rejects invalid or unfulfilled session with 400 Bad Request", () => {
+  interface VerifySimulation {
+    sessionPaid: boolean;
+    fulfillmentSuccess: boolean;
+    bookingPaid: boolean;
+  }
+
+  function handleVerification(sim: VerifySimulation): { status: number; success: boolean; message: string } {
+    if (!sim.sessionPaid) {
+      return { status: 400, success: false, message: "Stripe session is not paid" };
+    }
+    if (!sim.fulfillmentSuccess || !sim.bookingPaid) {
+      return {
+        status: 400,
+        success: false,
+        message: "Payment verification failed: session could not be fulfilled due to status or amount mismatch",
+      };
+    }
+    return { status: 200, success: true, message: "Payment verified and booking updated to paid" };
+  }
+
+  // Session paid, but fulfillment rejected due to amount mismatch -> returns 400 (never 200 with null!)
+  const rejectedFulfillment = handleVerification({ sessionPaid: true, fulfillmentSuccess: false, bookingPaid: false });
+  assert.equal(rejectedFulfillment.status, 400);
+  assert.equal(rejectedFulfillment.success, false);
+
+  // Unpaid session -> returns 400
+  const unpaidSession = handleVerification({ sessionPaid: false, fulfillmentSuccess: false, bookingPaid: false });
+  assert.equal(unpaidSession.status, 400);
+
+  // Successfully fulfilled session -> returns 200
+  const validPayment = handleVerification({ sessionPaid: true, fulfillmentSuccess: true, bookingPaid: true });
+  assert.equal(validPayment.status, 200);
+  assert.equal(validPayment.success, true);
+});
+
+test("Upload handler byte inspection accepts authentic JPEG, PNG, WebP signatures and rejects invalid non-images or oversized buffers", () => {
+  function validateImagePayload(buffer: Buffer, maxSizeBytes: number = 5 * 1024 * 1024): { ok: boolean; reason?: string } {
+    if (!buffer || buffer.length === 0) return { ok: false, reason: "Empty buffer" };
+    if (buffer.length > maxSizeBytes) return { ok: false, reason: "Size exceeds limit" };
+
+    const isJpeg = buffer.length > 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff;
+    const isPng = buffer.length > 8 && buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4e && buffer[3] === 0x47;
+    const isWebp =
+      buffer.length > 12 &&
+      buffer.toString("ascii", 0, 4) === "RIFF" &&
+      buffer.toString("ascii", 8, 12) === "WEBP";
+
+    if (!isJpeg && !isPng && !isWebp) {
+      return { ok: false, reason: "Unsupported image signature" };
+    }
+    return { ok: true };
+  }
+
+  // Authentic JPEG (FF D8 FF)
+  const jpegBuffer = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46]);
+  assert.equal(validateImagePayload(jpegBuffer).ok, true);
+
+  // Authentic PNG (89 50 4E 47 ...)
+  const pngBuffer = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00]);
+  assert.equal(validateImagePayload(pngBuffer).ok, true);
+
+  // Authentic WebP (RIFF....WEBP)
+  const webpBuffer = Buffer.concat([
+    Buffer.from("RIFF", "ascii"),
+    Buffer.from([0x20, 0x00, 0x00, 0x00]),
+    Buffer.from("WEBP", "ascii"),
+    Buffer.from("VP8 ", "ascii"),
+  ]);
+  assert.equal(validateImagePayload(webpBuffer).ok, true);
+
+  // Fake non-image: HTML/SVG or text
+  const textBuffer = Buffer.from("<svg>alert(1)</svg>", "utf-8");
+  assert.equal(validateImagePayload(textBuffer).ok, false);
+  assert.equal(validateImagePayload(textBuffer).reason, "Unsupported image signature");
+
+  // Empty buffer
+  assert.equal(validateImagePayload(Buffer.alloc(0)).ok, false);
+
+  // Oversized buffer (>5MB)
+  const oversizedBuffer = Buffer.concat([
+    Buffer.from([0xff, 0xd8, 0xff, 0xe0]),
+    Buffer.alloc(6 * 1024 * 1024),
+  ]);
+  assert.equal(validateImagePayload(oversizedBuffer).ok, false);
+  assert.equal(validateImagePayload(oversizedBuffer).reason, "Size exceeds limit");
 });

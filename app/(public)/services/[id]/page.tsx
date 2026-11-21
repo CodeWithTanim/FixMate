@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getServiceById } from "@/lib/api/services";
-import { MapPin, Clock, ShieldCheck, Tag, ArrowLeft, CheckCircle2, AlertCircle } from "lucide-react";
+import { MapPin, Clock, ShieldCheck, Tag, ArrowLeft, CheckCircle2, AlertCircle, Wrench } from "lucide-react";
 import BookingRequestModal from "@/components/BookingRequestModal";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
@@ -42,6 +42,21 @@ export default async function ServiceDetailsPage(props: {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* Main Details Column */}
         <div className="lg:col-span-7 space-y-6">
+          <div className="relative aspect-video w-full overflow-hidden rounded-3xl border border-[#DCE5DF] bg-[#F6F5EF] shadow-2xs">
+            {service.image ? (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img
+                src={service.image}
+                alt={service.title}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center bg-[#18756B]/10 text-[#18756B]">
+                <Wrench className="h-12 w-12" />
+              </div>
+            )}
+          </div>
+
           <div className="rounded-3xl border border-[#DCE5DF] bg-white p-6 sm:p-8 shadow-2xs space-y-6">
             <div className="flex flex-wrap items-center gap-2">
               <span className="inline-flex items-center gap-1 rounded-full bg-[#18756B]/10 px-3 py-1 text-xs font-bold text-[#18756B]">

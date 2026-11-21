@@ -121,6 +121,86 @@ export default function CustomerDashboard() {
         })}
       </div>
 
+      {/* Visual Analytics Chart: Repair Status Distribution & Expenditure */}
+      <div className="rounded-2xl border border-[#DCE5DF] bg-white p-6 shadow-2xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-[#DCE5DF] pb-4">
+          <div>
+            <h2 className="text-base font-bold text-[#152C2B]">Repair Activity & Resolution Breakdown</h2>
+            <p className="text-xs text-[#526564]">Proportional lifecycle metrics across all your service requests</p>
+          </div>
+          <div className="flex items-center gap-3 text-xs font-semibold">
+            <span className="flex items-center gap-1.5">
+              <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 inline-block" />
+              <span className="text-[#526564]">Completed ({stats?.completedBookings || 0})</span>
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="h-2.5 w-2.5 rounded-full bg-amber-500 inline-block" />
+              <span className="text-[#526564]">Active ({stats?.activeBookings || 0})</span>
+            </span>
+          </div>
+        </div>
+
+        {/* Visual Progress Bar Chart */}
+        <div className="space-y-2">
+          {stats && stats.totalBookings > 0 ? (
+            <>
+              <div className="flex h-5 w-full overflow-hidden rounded-full bg-[#F6F5EF] p-0.5 border border-[#DCE5DF]">
+                <div
+                  className="h-full rounded-full bg-emerald-500 transition-all duration-500"
+                  style={{
+                    width: `${Math.max(
+                      5,
+                      Math.round(((stats.completedBookings || 0) / stats.totalBookings) * 100)
+                    )}%`,
+                  }}
+                  title={`Completed: ${stats.completedBookings}`}
+                />
+                <div
+                  className="h-full rounded-full bg-amber-400 transition-all duration-500 ml-0.5"
+                  style={{
+                    width: `${Math.max(
+                      5,
+                      Math.round(((stats.activeBookings || 0) / stats.totalBookings) * 100)
+                    )}%`,
+                  }}
+                  title={`Active: ${stats.activeBookings}`}
+                />
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 text-xs">
+                <div className="p-3 rounded-xl bg-[#F6F5EF]/60 border border-[#DCE5DF]/60">
+                  <span className="text-[10px] text-[#526564] uppercase font-bold">Resolution Rate</span>
+                  <div className="text-lg font-black text-[#152C2B] mt-0.5">
+                    {Math.round(((stats.completedBookings || 0) / stats.totalBookings) * 100)}%
+                  </div>
+                </div>
+                <div className="p-3 rounded-xl bg-[#F6F5EF]/60 border border-[#DCE5DF]/60">
+                  <span className="text-[10px] text-[#526564] uppercase font-bold">Avg Cost Per Repair</span>
+                  <div className="text-lg font-black text-[#152C2B] mt-0.5">
+                    ${stats.completedBookings > 0 ? (stats.totalSpent / stats.completedBookings).toFixed(2) : "0.00"}
+                  </div>
+                </div>
+                <div className="p-3 rounded-xl bg-[#F6F5EF]/60 border border-[#DCE5DF]/60">
+                  <span className="text-[10px] text-[#526564] uppercase font-bold">Settled Bills</span>
+                  <div className="text-lg font-black text-emerald-700 mt-0.5">
+                    ${stats.totalSpent.toFixed(2)}
+                  </div>
+                </div>
+                <div className="p-3 rounded-xl bg-[#F6F5EF]/60 border border-[#DCE5DF]/60">
+                  <span className="text-[10px] text-[#526564] uppercase font-bold">Pipeline Stage</span>
+                  <div className="text-lg font-black text-[#18756B] mt-0.5">
+                    {stats.activeBookings > 0 ? "Underway" : "Ready"}
+                  </div>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="py-6 text-center text-xs text-[#526564] italic">
+              No service requests recorded yet. Bookings will generate real distribution charts here.
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Quick Actions & Recent Bookings */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left 2 cols: Recent Bookings */}

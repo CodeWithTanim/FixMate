@@ -134,6 +134,100 @@ export default function TechnicianDashboard() {
         })}
       </div>
 
+      {/* Visual Analytics Chart: Repair Pipeline & Status Distribution */}
+      <div className="rounded-2xl border border-[#DCE5DF] bg-white p-6 shadow-2xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-[#DCE5DF] pb-4">
+          <div>
+            <h2 className="text-base font-bold text-[#152C2B]">Repair Pipeline & Fulfillment Chart</h2>
+            <p className="text-xs text-[#526564]">Proportional workflow distribution of assigned customer jobs</p>
+          </div>
+          <div className="flex items-center gap-3 text-xs font-semibold">
+            <span className="flex items-center gap-1.5">
+              <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 inline-block" />
+              <span className="text-[#526564]">Completed ({stats?.completed || 0})</span>
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="h-2.5 w-2.5 rounded-full bg-indigo-500 inline-block" />
+              <span className="text-[#526564]">In Progress ({stats?.inProgress || 0})</span>
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="h-2.5 w-2.5 rounded-full bg-amber-400 inline-block" />
+              <span className="text-[#526564]">Pending ({stats?.pendingRequests || 0})</span>
+            </span>
+          </div>
+        </div>
+
+        {/* Proportional Distribution Bar */}
+        <div className="space-y-2">
+          {stats && stats.totalRequests > 0 ? (
+            <>
+              <div className="flex h-5 w-full overflow-hidden rounded-full bg-[#F6F5EF] p-0.5 border border-[#DCE5DF]">
+                <div
+                  className="h-full rounded-full bg-emerald-500 transition-all duration-500"
+                  style={{
+                    width: `${Math.max(
+                      5,
+                      Math.round(((stats.completed || 0) / stats.totalRequests) * 100)
+                    )}%`,
+                  }}
+                  title={`Completed: ${stats.completed}`}
+                />
+                <div
+                  className="h-full rounded-full bg-indigo-500 transition-all duration-500 ml-0.5"
+                  style={{
+                    width: `${Math.max(
+                      5,
+                      Math.round(((stats.inProgress || 0) / stats.totalRequests) * 100)
+                    )}%`,
+                  }}
+                  title={`In Progress: ${stats.inProgress}`}
+                />
+                <div
+                  className="h-full rounded-full bg-amber-400 transition-all duration-500 ml-0.5"
+                  style={{
+                    width: `${Math.max(
+                      5,
+                      Math.round(((stats.pendingRequests || 0) / stats.totalRequests) * 100)
+                    )}%`,
+                  }}
+                  title={`Pending: ${stats.pendingRequests}`}
+                />
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 text-xs">
+                <div className="p-3 rounded-xl bg-[#F6F5EF]/60 border border-[#DCE5DF]/60">
+                  <span className="text-[10px] text-[#526564] uppercase font-bold">Fulfillment Rate</span>
+                  <div className="text-lg font-black text-[#152C2B] mt-0.5">
+                    {Math.round(((stats.completed || 0) / stats.totalRequests) * 100)}%
+                  </div>
+                </div>
+                <div className="p-3 rounded-xl bg-[#F6F5EF]/60 border border-[#DCE5DF]/60">
+                  <span className="text-[10px] text-[#526564] uppercase font-bold">Active Workload</span>
+                  <div className="text-lg font-black text-indigo-700 mt-0.5">
+                    {stats.inProgress} jobs
+                  </div>
+                </div>
+                <div className="p-3 rounded-xl bg-[#F6F5EF]/60 border border-[#DCE5DF]/60">
+                  <span className="text-[10px] text-[#526564] uppercase font-bold">Avg Revenue / Job</span>
+                  <div className="text-lg font-black text-emerald-700 mt-0.5">
+                    ${stats.completed > 0 ? (stats.totalEarnings / stats.completed).toFixed(2) : "0.00"}
+                  </div>
+                </div>
+                <div className="p-3 rounded-xl bg-[#F6F5EF]/60 border border-[#DCE5DF]/60">
+                  <span className="text-[10px] text-[#526564] uppercase font-bold">Total Settled</span>
+                  <div className="text-lg font-black text-[#0B3638] mt-0.5">
+                    ${stats.totalEarnings.toFixed(2)}
+                  </div>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="py-6 text-center text-xs text-[#526564] italic">
+              No customer requests received yet. Incoming bookings will populate real conversion bars.
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Queue & Quick Actions */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Recent Requests */}
