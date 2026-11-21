@@ -22,10 +22,11 @@ export default function ErrorBoundary({
 
   const handleRetry = () => {
     setIsRetrying(true);
-    setTimeout(() => {
+    if (typeof window !== "undefined") {
+      window.location.reload();
+    } else {
       reset();
-      setIsRetrying(false);
-    }, 300);
+    }
   };
 
   return (
@@ -182,13 +183,13 @@ export default function ErrorBoundary({
                   <span>{isRetrying ? "Retrying..." : "Try Again"}</span>
                 </button>
 
-                <Link
+                <a
                   href="/"
                   className="inline-flex items-center justify-center gap-2 rounded-full border border-[#DCE5DF] bg-white hover:bg-[#F6F5EF] text-[#152C2B] px-6 py-3 text-xs font-bold uppercase tracking-wider transition-all duration-200"
                 >
                   <Home className="h-4 w-4 text-[#18756B]" />
                   <span>Return Home</span>
-                </Link>
+                </a>
               </div>
 
               {/* Technical Details Accordion */}

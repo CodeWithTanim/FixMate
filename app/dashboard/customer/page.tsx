@@ -64,28 +64,28 @@ export default function CustomerDashboard() {
   const statCards = [
     {
       label: "Total Bookings",
-      value: stats ? stats.totalBookings : 0,
+      value: stats ? stats.totalBookings || 0 : 0,
       icon: FileText,
       desc: "All lifetime repairs requested",
       color: "text-[#18756B] bg-[#18756B]/10",
     },
     {
       label: "Active Repairs",
-      value: stats ? stats.activeBookings : 0,
+      value: stats ? stats.activeBookings || 0 : 0,
       icon: Clock,
       desc: "Jobs currently being processed",
       color: "text-amber-700 bg-amber-50",
     },
     {
       label: "Completed",
-      value: stats ? stats.completedBookings : 0,
+      value: stats ? stats.completedBookings || 0 : 0,
       icon: CheckCircle,
       desc: "Successfully resolved repairs",
       color: "text-emerald-700 bg-emerald-50",
     },
     {
       label: "Total Spent",
-      value: `$${stats ? stats.totalSpent.toFixed(2) : "0.00"}`,
+      value: `$${typeof stats?.totalSpent === "number" ? stats.totalSpent.toFixed(2) : "0.00"}`,
       icon: DollarSign,
       desc: "Completed & settled repair bills",
       color: "text-[#0B3638] bg-[#0B3638]/10",
@@ -172,20 +172,20 @@ export default function CustomerDashboard() {
 
         {/* Visual Progress Bar Chart */}
         <div className="space-y-2">
-          {stats && stats.totalBookings > 0 ? (
+          {stats && (stats.totalBookings || 0) > 0 ? (
             <>
               <div className="flex h-5 w-full overflow-hidden rounded-full bg-[#F6F5EF] p-0.5 border border-[#DCE5DF]">
                 <div
                   className="h-full rounded-full bg-emerald-500 transition-all duration-500"
                   style={{
-                    width: `${(stats.completedBookings || 0) > 0 ? Math.max(5, Math.round(((stats.completedBookings || 0) / stats.totalBookings) * 100)) : 0}%`,
+                    width: `${(stats.completedBookings || 0) > 0 ? Math.max(5, Math.round(((stats.completedBookings || 0) / (stats.totalBookings || 1)) * 100)) : 0}%`,
                   }}
                   title={`Completed: ${stats.completedBookings}`}
                 />
                 <div
                   className="h-full rounded-full bg-amber-400 transition-all duration-500 ml-0.5"
                   style={{
-                    width: `${(stats.activeBookings || 0) > 0 ? Math.max(5, Math.round(((stats.activeBookings || 0) / stats.totalBookings) * 100)) : 0}%`,
+                    width: `${(stats.activeBookings || 0) > 0 ? Math.max(5, Math.round(((stats.activeBookings || 0) / (stats.totalBookings || 1)) * 100)) : 0}%`,
                   }}
                   title={`Active: ${stats.activeBookings}`}
                 />
@@ -194,25 +194,25 @@ export default function CustomerDashboard() {
                 <div className="p-3 rounded-xl bg-[#F6F5EF]/60 border border-[#DCE5DF]/60">
                   <span className="text-[10px] text-[#526564] uppercase font-bold">Resolution Rate</span>
                   <div className="text-lg font-black text-[#152C2B] mt-0.5">
-                    {Math.round(((stats.completedBookings || 0) / stats.totalBookings) * 100)}%
+                    {Math.round(((stats.completedBookings || 0) / (stats.totalBookings || 1)) * 100)}%
                   </div>
                 </div>
                 <div className="p-3 rounded-xl bg-[#F6F5EF]/60 border border-[#DCE5DF]/60">
                   <span className="text-[10px] text-[#526564] uppercase font-bold">Avg Cost Per Repair</span>
                   <div className="text-lg font-black text-[#152C2B] mt-0.5">
-                    ${stats.completedBookings > 0 ? (stats.totalSpent / stats.completedBookings).toFixed(2) : "0.00"}
+                    ${(stats.completedBookings || 0) > 0 && typeof stats.totalSpent === "number" ? (stats.totalSpent / stats.completedBookings).toFixed(2) : "0.00"}
                   </div>
                 </div>
                 <div className="p-3 rounded-xl bg-[#F6F5EF]/60 border border-[#DCE5DF]/60">
                   <span className="text-[10px] text-[#526564] uppercase font-bold">Settled Bills</span>
                   <div className="text-lg font-black text-emerald-700 mt-0.5">
-                    ${stats.totalSpent.toFixed(2)}
+                    ${typeof stats.totalSpent === "number" ? stats.totalSpent.toFixed(2) : "0.00"}
                   </div>
                 </div>
                 <div className="p-3 rounded-xl bg-[#F6F5EF]/60 border border-[#DCE5DF]/60">
                   <span className="text-[10px] text-[#526564] uppercase font-bold">Pipeline Stage</span>
                   <div className="text-lg font-black text-[#18756B] mt-0.5">
-                    {stats.activeBookings > 0 ? "Underway" : "Ready"}
+                    {(stats.activeBookings || 0) > 0 ? "Underway" : "Ready"}
                   </div>
                 </div>
               </div>
@@ -249,7 +249,7 @@ export default function CustomerDashboard() {
                 <div key={i} className="h-14 rounded-xl bg-slate-50 animate-pulse" />
               ))}
             </div>
-          ) : !stats || stats.recentBookings.length === 0 ? (
+          ) : !stats || !Array.isArray(stats.recentBookings) || stats.recentBookings.length === 0 ? (
             <div className="rounded-xl border border-dashed border-[#DCE5DF] p-8 text-center bg-[#F6F5EF]/50">
               <CalendarCheck className="mx-auto h-8 w-8 text-[#526564]/40 mb-2" />
               <p className="text-xs font-bold text-[#152C2B]">No active bookings yet</p>
@@ -259,7 +259,7 @@ export default function CustomerDashboard() {
             </div>
           ) : (
             <div className="space-y-3">
-              {stats.recentBookings.map((b) => (
+              {(stats?.recentBookings || []).map((b) => (
                 <div
                   key={b.id}
                   className="flex items-center justify-between p-3.5 rounded-xl border border-[#DCE5DF]/60 bg-[#F6F5EF]/30 hover:bg-[#F6F5EF] transition"
