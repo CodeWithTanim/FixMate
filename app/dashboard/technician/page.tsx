@@ -182,17 +182,17 @@ export default function TechnicianDashboard() {
               <Crown className="h-5 w-5 text-amber-600 dark:text-amber-400" />
             </div>
             <div>
-              <div className="text-sm font-bold text-[#152C2B] dark:text-[#EEF8F6]">
+              <div className="text-sm font-bold text-amber-950 dark:text-amber-100">
                 Standard Tier (10% platform fee applied • 5-service limit)
               </div>
-              <p className="text-xs text-[#526564] dark:text-[#8EA8A5] mt-0.5">
+              <p className="text-xs text-amber-900 dark:text-amber-200 mt-0.5">
                 Upgrade to FixMate Pro ($29/mo) to keep 100% of your customer earnings and unlock unlimited service listings.
               </p>
             </div>
           </div>
           <Link
             href="/dashboard/technician/subscription"
-            className="inline-flex items-center gap-1.5 rounded-xl bg-linear-to-r from-amber-500 to-amber-600 px-4 py-2 text-xs font-bold text-white hover:from-amber-600 hover:to-amber-700 transition shadow-xs whitespace-nowrap self-stretch sm:self-auto justify-center"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-amber-700 px-4 py-2 text-xs font-bold text-white hover:bg-amber-800 transition shadow-xs whitespace-nowrap self-stretch sm:self-auto justify-center"
           >
             <Crown className="h-3.5 w-3.5 fill-white" />
             <span>Upgrade to Pro ($29/mo)</span>

@@ -22,8 +22,6 @@ import {
   Crown,
 } from "lucide-react";
 import { signOutUser } from "@/lib/api/client";
-import toast from "react-hot-toast";
-import { useRouter } from "next/navigation";
 import ThemeToggle from "./ThemeToggle";
 
 interface DashboardSidebarProps {
@@ -40,7 +38,6 @@ export default function DashboardSidebar({ user }: DashboardSidebarProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [profileOverride, setProfileOverride] = useState<{ name?: string; image?: string | null } | null>(null);
   const pathname = usePathname();
-  const router = useRouter();
 
   useEffect(() => {
     const handleProfileUpdate = (e: Event) => {
@@ -198,43 +195,6 @@ export default function DashboardSidebar({ user }: DashboardSidebarProps) {
           </div>
         </div>
 
-        {role !== "admin" && (
-          <button
-            type="button"
-            onClick={async () => {
-              const target = role === "technician" ? "customer" : "technician";
-              const toastId = toast.loading(`Switching to ${target === "technician" ? "Technician" : "Customer"} Portal...`);
-              try {
-                await fetch("/api/auth/switch-role", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ role: target }),
-                });
-                toast.success(`Active role switched to ${target}!`, { id: toastId });
-                window.location.href = `/dashboard/${target}`;
-              } catch {
-                toast.error("Failed to switch role", { id: toastId });
-              }
-            }}
-            className={`w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-bold transition mb-2 border cursor-pointer ${
-              role === "technician"
-                ? "bg-emerald-500/20 text-emerald-200 border-emerald-500/40 hover:bg-emerald-500/30"
-                : "bg-[#18756B]/40 text-emerald-100 border-[#18756B]/50 hover:bg-[#18756B]/60"
-            }`}
-          >
-            {role === "technician" ? (
-              <>
-                <ShieldCheck className="h-3.5 w-3.5 text-emerald-300" />
-                <span>Switch to Customer</span>
-              </>
-            ) : (
-              <>
-                <Wrench className="h-3.5 w-3.5 text-[#F4B740]" />
-                <span>Switch to Technician</span>
-              </>
-            )}
-          </button>
-        )}
 
         <button
           onClick={handleSignOut}

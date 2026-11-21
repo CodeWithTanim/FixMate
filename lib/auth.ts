@@ -1,8 +1,10 @@
 import { betterAuth } from "better-auth";
-import { mongodbAdapter } from "@better-auth/mongo-adapter";
-import { createAuthMiddleware, APIError } from "better-auth/api";
-import { getDatabase, mongoClient, mongoDb } from "./db";
+import { createAuthMiddleware, APIError, addOAuthServerContext } from "better-auth/api";
+import { ObjectId } from "mongodb";
+import { getDatabase, mongoDb } from "./db";
 import { getAuthConfiguration } from "./auth-config";
+import { getAccountRole } from "./account-role";
+import { roleAuthAdapter } from "./role-auth-adapter";
 
 const secret = process.env.BETTER_AUTH_SECRET;
 if (!secret) throw new Error("BETTER_AUTH_SECRET must be configured for authentication.");
@@ -15,15 +17,35 @@ function createAuth() {
   trustedOrigins: configuration.trustedOrigins,
   onAPIError: { errorURL: "/sign-in" },
   advanced: { trustedProxyHeaders: process.env.VERCEL === "1" },
-  database: mongodbAdapter(mongoDb, {
-    client: mongoClient,
-  }),
+  database: roleAuthAdapter(),
+  plugins: [{
+    id: "fixed-role-accounts",
+    schema: {
+      user: {
+        fields: {},
+        indexes: [{ name: "user_email_role_uidx", fields: ["email", "role"], unique: true }],
+      },
+      account: {
+        fields: { accountRole: { type: "string", required: true, input: false, defaultValue: "customer" } },
+        indexes: [{ name: "account_provider_role_uidx", fields: ["providerId", "accountId", "accountRole"], unique: true }],
+      },
+    },
+  }],
   emailAndPassword: {
     enabled: true,
     minPasswordLength: 6,
   },
   hooks: {
     before: createAuthMiddleware(async (ctx) => {
+      if (ctx.path === "/sign-in/social" || ctx.path === "/link-social") {
+        let role = await getAccountRole();
+        if (ctx.path === "/link-social") {
+          const session = await (await getAuth()).api.getSession({ headers: ctx.headers || new Headers() });
+          const savedRole = (session?.user as { role?: string } | undefined)?.role;
+          if (savedRole === "customer" || savedRole === "technician" || savedRole === "admin") role = savedRole;
+        }
+        await addOAuthServerContext({ accountRole: role });
+      }
       // Server-side password policy & role sanitization
       if (ctx.path === "/sign-up/email") {
         const body = ctx.body as Record<string, unknown> | undefined;
@@ -118,7 +140,7 @@ function createAuth() {
       role: {
         type: "string",
         defaultValue: "customer",
-        required: false,
+        required: true,
       },
       phone: {
         type: "string",
@@ -135,26 +157,19 @@ function createAuth() {
     },
   },
   databaseHooks: {
+    account: {
+      create: {
+        before: async (account) => {
+          const id = String(account.userId);
+          const user = await mongoDb.collection("user").findOne(ObjectId.isValid(id) ? { _id: new ObjectId(id) } : { id });
+          return { data: { ...account, accountRole: user?.role || await getAccountRole() } };
+        },
+      },
+    },
     user: {
       create: {
-        before: async (user, ctx) => {
-          let selectedRole = (user as { role?: string })?.role;
-          try {
-            const context = ctx as { path?: string; headers?: { get?: (name: string) => string | null; cookie?: string } } | undefined;
-            const cookieHeader = context?.headers?.get ? context.headers.get("cookie") : context?.headers?.cookie;
-            if (cookieHeader && context?.path?.startsWith("/callback/")) {
-              const match = cookieHeader.match(/fixmate_intended_role=([^;]+)/);
-              if (match && match[1]) {
-                const roleFromCookie = decodeURIComponent(match[1]).trim().toLowerCase();
-                if (roleFromCookie === "technician" || roleFromCookie === "customer") {
-                  selectedRole = roleFromCookie;
-                }
-              }
-            }
-          } catch {
-            console.warn("Could not read the intended signup role.");
-          }
-
+        before: async (user) => {
+          const selectedRole = await getAccountRole();
           const safeRole = selectedRole === "technician" ? "technician" : "customer";
           return {
             data: {

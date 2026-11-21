@@ -52,6 +52,7 @@ function SignUpForm() {
         callbackURL: getSafeRedirectUrl(callbackUrl, "/dashboard"),
         errorCallbackURL: `/sign-up?role=${role}`,
         disableRedirect: true,
+        fetchOptions: { headers: { "x-fixmate-account-role": role } },
       });
       if (res?.error) {
         throw new Error(getAuthErrorMessage(res.error, "Failed to initiate Google sign up."));

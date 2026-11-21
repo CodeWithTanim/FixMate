@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import toast from "react-hot-toast";
 import { authClient } from "@/lib/auth-client";
-import { Lock, Mail, Loader2, ShieldCheck, Wrench, Eye, EyeOff, KeyRound } from "lucide-react";
+import { Lock, Mail, Loader2, ShieldCheck, Wrench, Eye, EyeOff } from "lucide-react";
 import { getSafeRedirectUrl } from "@/lib/utils";
 import { getAuthErrorMessage, getOAuthErrorMessage } from "@/lib/auth-errors";
 
@@ -51,6 +51,7 @@ function SignInForm() {
         callbackURL: getSafeRedirectUrl(callbackUrl, "/dashboard"),
         errorCallbackURL: `/sign-in?role=${role}`,
         disableRedirect: true,
+        fetchOptions: { headers: { "x-fixmate-account-role": role } },
       });
       if (res?.error) {
         throw new Error(getAuthErrorMessage(res.error, "Failed to initiate Google sign in."));
@@ -65,23 +66,6 @@ function SignInForm() {
       toast.error(message);
       setErrorMsg(message);
       setGoogleLoading(false);
-    }
-  };
-
-  const handleAutofill = (demoRole: "admin" | "customer" | "technician") => {
-    setErrorMsg("");
-    if (demoRole === "admin") {
-      setEmail("admin@fixmate.dev");
-      setPassword("Admin@Tanim2026");
-      setRole("customer");
-    } else if (demoRole === "customer") {
-      setEmail("customer@fixmate.dev");
-      setPassword("Password123");
-      setRole("customer");
-    } else if (demoRole === "technician") {
-      setEmail("rahim.tech@fixmate.dev");
-      setPassword("Password123");
-      setRole("technician");
     }
   };
 
@@ -104,6 +88,7 @@ function SignInForm() {
       const res = await authClient.signIn.email({
         email: cleanEmail,
         password: cleanPassword,
+        fetchOptions: { headers: { "x-fixmate-account-role": role } },
       });
 
       if (res.error) {
@@ -170,37 +155,6 @@ function SignInForm() {
           >
             <Wrench className="h-4 w-4" />
             <span>Technician</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Demo Quick Fill Helper */}
-      <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
-        <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-600">
-          <KeyRound className="h-3.5 w-3.5 text-[#18756B]" />
-          <span>Quick Demo Autofill:</span>
-        </div>
-        <div className="flex flex-wrap gap-1.5">
-          <button
-            type="button"
-            onClick={() => handleAutofill("admin")}
-            className="rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-900 px-2.5 py-1 text-[11px] font-bold transition cursor-pointer"
-          >
-            Admin (Admin@Tanim2026)
-          </button>
-          <button
-            type="button"
-            onClick={() => handleAutofill("customer")}
-            className="rounded-lg bg-emerald-100 hover:bg-emerald-200 text-emerald-900 px-2.5 py-1 text-[11px] font-bold transition cursor-pointer"
-          >
-            Customer (Password123)
-          </button>
-          <button
-            type="button"
-            onClick={() => handleAutofill("technician")}
-            className="rounded-lg bg-blue-100 hover:bg-blue-200 text-blue-900 px-2.5 py-1 text-[11px] font-bold transition cursor-pointer"
-          >
-            Technician (Password123)
           </button>
         </div>
       </div>

@@ -1,6 +1,7 @@
 import { getAuth } from "@/lib/auth";
 import { toNextJsHandler } from "better-auth/next-js";
 import { NextResponse } from "next/server";
+import { publicAccountRole, withAccountRole } from "@/lib/account-role";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -8,7 +9,12 @@ export const maxDuration = 60;
 
 const handlers = toNextJsHandler(async (request: Request) => {
   const auth = await getAuth();
-  return auth.handler(request);
+  let role = publicAccountRole(request.headers.get("x-fixmate-account-role"));
+  if (request.method === "POST" && new URL(request.url).pathname.endsWith("/sign-up/email")) {
+    const body = await request.clone().json().catch(() => ({}));
+    role = publicAccountRole(body.role);
+  }
+  return withAccountRole(role, () => auth.handler(request));
 });
 
 function withAuthErrors(handler: (request: Request) => Promise<Response>) {
