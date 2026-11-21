@@ -3,9 +3,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
-import { Wrench, Tag, DollarSign, Clock, MapPin, FileText, Image as ImageIcon, Loader2, ArrowLeft } from "lucide-react";
+import { Wrench, Tag, DollarSign, Clock, MapPin, FileText, Image as ImageIcon, Loader2, ArrowLeft, Upload, CheckCircle2, AlertCircle } from "lucide-react";
 import Link from "next/link";
-import { apiRequest } from "@/lib/api/client";
+import { apiRequest, apiClient } from "@/lib/api/client";
 import { authClient } from "@/lib/auth-client";
 import type { ServiceCategory, ServiceMode, UserProfile } from "@/types";
 
@@ -34,8 +34,45 @@ export default function AddServicePage() {
   const [serviceArea, setServiceArea] = useState(user?.area || "Central District");
   const [description, setDescription] = useState("");
   const [image, setImage] = useState("");
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [uploadNotice, setUploadNotice] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+
+  const handleImageFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image file size must be under 5MB");
+      return;
+    }
+
+    try {
+      setUploadingImage(true);
+      setUploadNotice(null);
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const base64 = reader.result as string;
+        try {
+          const res = await apiClient.post<{ url: string }>("/api/upload", { image: base64 });
+          setImage(res.url);
+          toast.success("Service image uploaded successfully!");
+        } catch (err: unknown) {
+          const error = err as { message?: string };
+          const msg = error.message || "Image upload failed";
+          setUploadNotice(msg);
+          toast.error(msg);
+        } finally {
+          setUploadingImage(false);
+        }
+      };
+      reader.readAsDataURL(file);
+    } catch {
+      setUploadingImage(false);
+      toast.error("Failed to read image file");
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -227,20 +264,70 @@ export default function AddServicePage() {
           </div>
         </div>
 
-        {/* Image URL / Upload */}
-        <div>
-          <label className="block text-xs font-bold text-[#152C2B] mb-1.5" htmlFor="image">
-            Service Image URL
+        {/* Image File Upload & Preview */}
+        <div className="space-y-2">
+          <label className="block text-xs font-bold text-[#152C2B]" htmlFor="image-file">
+            Service Listing Photo
           </label>
-          <div className="relative">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+            <div className="relative flex-1 w-full">
+              <label
+                htmlFor="image-file"
+                className="flex items-center justify-center gap-2 w-full cursor-pointer rounded-xl border border-dashed border-[#18756B]/40 bg-[#18756B]/5 px-4 py-3 text-xs font-semibold text-[#18756B] hover:bg-[#18756B]/10 transition"
+              >
+                {uploadingImage ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin text-[#18756B]" />
+                    <span>Uploading image to ImgBB...</span>
+                  </>
+                ) : (
+                  <>
+                    <Upload className="h-4 w-4" />
+                    <span>Choose photo from device (JPEG, PNG, WebP up to 5MB)</span>
+                  </>
+                )}
+              </label>
+              <input
+                id="image-file"
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                disabled={uploadingImage}
+                onChange={handleImageFileChange}
+                className="hidden"
+              />
+            </div>
+
+            {image && (
+              <div className="flex items-center gap-2">
+                <div className="relative h-12 w-12 rounded-xl overflow-hidden border border-[#DCE5DF] bg-[#F6F5EF] shrink-0">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={image} alt="Service preview" className="h-full w-full object-cover" />
+                </div>
+                <div className="flex items-center gap-1 text-[11px] font-bold text-emerald-700">
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  <span>Photo Ready</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {uploadNotice && (
+            <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-2.5 text-[11px] text-amber-800">
+              <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5 text-amber-600" />
+              <span>{uploadNotice}</span>
+            </div>
+          )}
+
+          {/* Optional Direct URL Fallback */}
+          <div className="relative mt-2">
             <ImageIcon className="absolute left-3.5 top-3 h-4 w-4 text-[#526564]" />
             <input
               id="image"
-              type="url"
+              type="text"
               value={image}
               onChange={(e) => setImage(e.target.value)}
-              placeholder="https://images.unsplash.com/... (or leave blank for category stock)"
-              className="w-full rounded-xl border border-[#DCE5DF] py-2.5 pl-10 pr-3 text-sm text-[#152C2B] focus:border-[#18756B] focus:outline-none focus:ring-1 focus:ring-[#18756B]"
+              placeholder="Or paste an image URL (optional)"
+              className="w-full rounded-xl border border-[#DCE5DF] py-2 pl-10 pr-3 text-xs text-[#152C2B] focus:border-[#18756B] focus:outline-none focus:ring-1 focus:ring-[#18756B]"
             />
           </div>
         </div>

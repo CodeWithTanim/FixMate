@@ -11,7 +11,12 @@ try {
 const uri = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/fixmate-db";
 const dbName = process.env.MONGODB_DBNAME || "fixmate-db";
 
-const DEMO_PASSWORD_RAW = process.env.DEMO_USER_PASSWORD || "FixMate2026!";
+const DEMO_PASSWORD_RAW = process.env.DEMO_USER_PASSWORD;
+if (!DEMO_PASSWORD_RAW) {
+  console.error("Error: DEMO_USER_PASSWORD environment variable is required to run the seed script.");
+  console.error("Please configure DEMO_USER_PASSWORD in your private .env file before running.");
+  process.exit(1);
+}
 
 async function runSeed() {
   console.log("Connecting to database at", dbName);
@@ -100,6 +105,13 @@ async function runSeed() {
       console.log(`Created demo user: ${u.email} (${u.role})`);
     } else {
       userIds[u.email] = existing._id.toString();
+
+      // Only update metadata if this is explicitly marked as a demo seed account
+      if (!existing.isDemoAccount) {
+        console.log(`Skipping non-demo user account: ${u.email}`);
+        continue;
+      }
+
       // Ensure profile metadata is maintained
       await usersCol.updateOne(
         { email: u.email },
@@ -525,11 +537,7 @@ async function runSeed() {
   }
 
   console.log("\nDatabase seeding completed successfully!");
-  console.log("Demo Credentials Record:");
-  console.log("Customer:   customer@fixmate.dev   /  Password:", DEMO_PASSWORD_RAW);
-  console.log("Tech 1:     rahim.tech@fixmate.dev /  Password:", DEMO_PASSWORD_RAW);
-  console.log("Tech 2:     sarah.appliances@fixmate.dev / Password:", DEMO_PASSWORD_RAW);
-  console.log("Admin:      admin@fixmate.dev      /  Password:", DEMO_PASSWORD_RAW);
+  console.log("Demo user accounts verified: customer@fixmate.dev, rahim.tech@fixmate.dev, sarah.appliances@fixmate.dev, admin@fixmate.dev");
 
   await client.close();
 }

@@ -3,7 +3,11 @@ import { mongodbAdapter } from "@better-auth/mongo-adapter";
 import { createAuthMiddleware, APIError } from "better-auth/api";
 import { mongoClient, mongoDb } from "./db";
 
-const secret = process.env.BETTER_AUTH_SECRET || "fixmate-temporary-build-secret-key-minimum-32-chars";
+const secret = process.env.BETTER_AUTH_SECRET || (
+  process.env.NODE_ENV === "production" && process.env.NEXT_PHASE !== "phase-production-build"
+    ? (() => { throw new Error("BETTER_AUTH_SECRET environment variable is required in production"); })()
+    : "fixmate-local-dev-secret-minimum-32-chars-long"
+);
 
 const trustedOrigins = process.env.BETTER_AUTH_TRUSTED_ORIGINS
   ? process.env.BETTER_AUTH_TRUSTED_ORIGINS.split(",").map((o) => o.trim()).filter(Boolean)

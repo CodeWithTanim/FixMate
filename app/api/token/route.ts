@@ -15,6 +15,14 @@ export async function POST() {
     // Validate origin header if present (browser requests)
     const origin = reqHeaders.get("origin");
     if (origin) {
+      const normalizeOrigin = (val: string): string => {
+        try {
+          return new URL(val).origin.toLowerCase();
+        } catch {
+          return val.replace(/\/+$/, "").toLowerCase();
+        }
+      };
+
       const trustedList = process.env.BETTER_AUTH_TRUSTED_ORIGINS
         ? process.env.BETTER_AUTH_TRUSTED_ORIGINS.split(",").map((o) => o.trim()).filter(Boolean)
         : [];
@@ -27,7 +35,10 @@ export async function POST() {
         ...trustedList,
       ].filter(Boolean) as string[];
 
-      const isAllowed = allowedOrigins.some((allowed) => origin === allowed || origin.startsWith(allowed));
+      const normalizedReqOrigin = normalizeOrigin(origin);
+      const normalizedAllowed = allowedOrigins.map(normalizeOrigin);
+
+      const isAllowed = normalizedAllowed.includes(normalizedReqOrigin);
       if (!isAllowed) {
         return new NextResponse(
           JSON.stringify({ error: "Forbidden", message: "Origin not allowed to issue tokens" }),
