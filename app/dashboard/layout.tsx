@@ -15,8 +15,12 @@ export default async function DashboardLayout({
     headers: reqHeaders,
   });
 
+  const pathname = reqHeaders.get("x-pathname") || "/dashboard";
+  const search = reqHeaders.get("x-search") || "";
+  const fullTarget = pathname + search;
+
   if (!session || !session.user) {
-    redirect("/sign-in?callbackUrl=/dashboard");
+    redirect(`/sign-in?callbackUrl=${encodeURIComponent(fullTarget)}`);
   }
 
   const user = session.user as {

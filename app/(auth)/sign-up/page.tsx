@@ -89,44 +89,44 @@ export default function SignUpPage() {
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Role Selection */}
         <div>
-          <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+          <label className="block text-xs font-bold text-[#152C2B] mb-1.5">
             I want to join as
           </label>
           <div className="grid grid-cols-2 gap-3">
             <button
               type="button"
               onClick={() => setRole("customer")}
-              className={`flex items-center justify-center gap-2 rounded-lg border p-3 text-xs font-semibold transition cursor-pointer ${
+              className={`flex items-center justify-center gap-2 rounded-xl border p-3 text-xs font-bold transition cursor-pointer ${
                 role === "customer"
-                  ? "border-sky-600 bg-sky-50 text-sky-700 shadow-xs"
-                  : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                  ? "border-[#18756B] bg-[#18756B]/10 text-[#18756B] shadow-xs"
+                  : "border-[#DCE5DF] bg-white text-[#526564] hover:bg-[#F6F5EF]"
               }`}
             >
-              <ShieldCheck className="h-4 w-4 text-sky-600" />
+              <ShieldCheck className="h-4 w-4 text-[#18756B]" />
               <span>Customer</span>
             </button>
 
             <button
               type="button"
               onClick={() => setRole("technician")}
-              className={`flex items-center justify-center gap-2 rounded-lg border p-3 text-xs font-semibold transition cursor-pointer ${
+              className={`flex items-center justify-center gap-2 rounded-xl border p-3 text-xs font-bold transition cursor-pointer ${
                 role === "technician"
-                  ? "border-sky-600 bg-sky-50 text-sky-700 shadow-xs"
-                  : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                  ? "border-[#18756B] bg-[#18756B]/10 text-[#18756B] shadow-xs"
+                  : "border-[#DCE5DF] bg-white text-[#526564] hover:bg-[#F6F5EF]"
               }`}
             >
-              <Wrench className="h-4 w-4 text-sky-600" />
+              <Wrench className="h-4 w-4 text-[#18756B]" />
               <span>Technician</span>
             </button>
           </div>
         </div>
 
         <div>
-          <label className="block text-xs font-semibold text-slate-700 mb-1" htmlFor="name">
+          <label className="block text-xs font-bold text-[#152C2B] mb-1" htmlFor="name">
             Full Name
           </label>
           <div className="relative">
-            <User className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+            <User className="absolute left-3 top-2.5 h-4 w-4 text-[#526564]" />
             <input
               id="name"
               type="text"
@@ -134,17 +134,17 @@ export default function SignUpPage() {
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="John Doe"
-              className="w-full rounded-lg border border-slate-300 py-2 pl-9 pr-3 text-sm text-slate-900 placeholder-slate-400 focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+              className="w-full rounded-xl border border-[#DCE5DF] py-2.5 pl-9 pr-3 text-sm text-[#152C2B] placeholder:text-[#526564]/50 focus:border-[#18756B] focus:outline-none focus:ring-1 focus:ring-[#18756B]"
             />
           </div>
         </div>
 
         <div>
-          <label className="block text-xs font-semibold text-slate-700 mb-1" htmlFor="email">
+          <label className="block text-xs font-bold text-[#152C2B] mb-1" htmlFor="email">
             Email Address
           </label>
           <div className="relative">
-            <Mail className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+            <Mail className="absolute left-3 top-2.5 h-4 w-4 text-[#526564]" />
             <input
               id="email"
               type="email"
@@ -152,17 +152,17 @@ export default function SignUpPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
-              className="w-full rounded-lg border border-slate-300 py-2 pl-9 pr-3 text-sm text-slate-900 placeholder-slate-400 focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+              className="w-full rounded-xl border border-[#DCE5DF] py-2.5 pl-9 pr-3 text-sm text-[#152C2B] placeholder:text-[#526564]/50 focus:border-[#18756B] focus:outline-none focus:ring-1 focus:ring-[#18756B]"
             />
           </div>
         </div>
 
         <div>
-          <label className="block text-xs font-semibold text-slate-700 mb-1" htmlFor="password">
+          <label className="block text-xs font-bold text-[#152C2B] mb-1" htmlFor="password">
             Password
           </label>
           <div className="relative">
-            <Lock className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+            <Lock className="absolute left-3 top-2.5 h-4 w-4 text-[#526564]" />
             <input
               id="password"
               type="password"
@@ -170,10 +170,10 @@ export default function SignUpPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="At least 6 chars (A-Z & a-z)"
-              className="w-full rounded-lg border border-slate-300 py-2 pl-9 pr-3 text-sm text-slate-900 placeholder-slate-400 focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+              className="w-full rounded-xl border border-[#DCE5DF] py-2.5 pl-9 pr-3 text-sm text-[#152C2B] placeholder:text-[#526564]/50 focus:border-[#18756B] focus:outline-none focus:ring-1 focus:ring-[#18756B]"
             />
           </div>
-          <p className="mt-1 text-[11px] text-slate-500">
+          <p className="mt-1 text-[11px] text-[#526564]">
             Must include at least 6 characters with uppercase and lowercase letters.
           </p>
         </div>
@@ -181,7 +181,7 @@ export default function SignUpPage() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full flex items-center justify-center gap-2 rounded-lg bg-sky-600 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-sky-700 disabled:opacity-60 transition"
+          className="w-full flex items-center justify-center gap-2 rounded-xl bg-[#18756B] py-3 text-sm font-bold text-white shadow-xs hover:bg-[#135d55] disabled:opacity-60 transition cursor-pointer"
         >
           {loading ? (
             <>
@@ -194,9 +194,9 @@ export default function SignUpPage() {
         </button>
       </form>
 
-      <div className="text-center text-xs text-slate-500 pt-2 border-t border-slate-100">
+      <div className="text-center text-xs text-[#526564] pt-2 border-t border-[#DCE5DF]">
         Already have an account?{" "}
-        <Link href="/sign-in" className="font-semibold text-sky-600 hover:text-sky-700">
+        <Link href="/sign-in" className="font-bold text-[#18756B] hover:text-[#135d55]">
           Sign in
         </Link>
       </div>

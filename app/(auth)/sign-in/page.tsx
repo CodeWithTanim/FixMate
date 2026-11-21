@@ -90,17 +90,17 @@ export default function SignInPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
-              className="w-full rounded-lg border border-slate-300 py-2 pl-9 pr-3 text-sm text-slate-900 placeholder-slate-400 focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+              className="w-full rounded-xl border border-[#DCE5DF] py-2.5 pl-9 pr-3 text-sm text-[#152C2B] placeholder:text-[#526564]/50 focus:border-[#18756B] focus:outline-none focus:ring-1 focus:ring-[#18756B]"
             />
           </div>
         </div>
 
         <div>
-          <label className="block text-xs font-semibold text-slate-700 mb-1" htmlFor="password">
+          <label className="block text-xs font-bold text-[#152C2B] mb-1" htmlFor="password">
             Password
           </label>
           <div className="relative">
-            <Lock className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+            <Lock className="absolute left-3 top-2.5 h-4 w-4 text-[#526564]" />
             <input
               id="password"
               type="password"
@@ -108,7 +108,7 @@ export default function SignInPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
-              className="w-full rounded-lg border border-slate-300 py-2 pl-9 pr-3 text-sm text-slate-900 placeholder-slate-400 focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+              className="w-full rounded-xl border border-[#DCE5DF] py-2.5 pl-9 pr-3 text-sm text-[#152C2B] placeholder:text-[#526564]/50 focus:border-[#18756B] focus:outline-none focus:ring-1 focus:ring-[#18756B]"
             />
           </div>
         </div>
@@ -116,7 +116,7 @@ export default function SignInPage() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full flex items-center justify-center gap-2 rounded-lg bg-sky-600 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-sky-700 disabled:opacity-60 transition"
+          className="w-full flex items-center justify-center gap-2 rounded-xl bg-[#18756B] py-3 text-sm font-bold text-white shadow-xs hover:bg-[#135d55] disabled:opacity-60 transition cursor-pointer"
         >
           {loading ? (
             <>
@@ -129,9 +129,9 @@ export default function SignInPage() {
         </button>
       </form>
 
-      <div className="text-center text-xs text-slate-500 pt-2 border-t border-slate-100">
+      <div className="text-center text-xs text-[#526564] pt-2 border-t border-[#DCE5DF]">
         Don&apos;t have an account?{" "}
-        <Link href="/sign-up" className="font-semibold text-sky-600 hover:text-sky-700">
+        <Link href="/sign-up" className="font-bold text-[#18756B] hover:text-[#135d55]">
           Create an account
         </Link>
       </div>

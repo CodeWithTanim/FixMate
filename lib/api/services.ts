@@ -29,7 +29,7 @@ export async function getPublicServices(params?: {
 
   try {
     const res = await fetch(`${API_BASE_URL}/api/services?${query.toString()}`, {
-      next: { revalidate: 15 },
+      cache: "no-store",
     });
 
     if (!res.ok) {
@@ -44,12 +44,13 @@ export async function getPublicServices(params?: {
     }
 
     const json = await res.json();
+    const pagination = json.pagination || {};
     return {
       data: json.data || [],
-      total: json.total || 0,
-      page: json.page || 1,
-      limit: json.limit || 9,
-      totalPages: json.totalPages || 1,
+      total: pagination.total ?? json.total ?? 0,
+      page: pagination.page ?? json.page ?? 1,
+      limit: pagination.limit ?? json.limit ?? 9,
+      totalPages: pagination.totalPages ?? json.totalPages ?? 1,
     };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Service connection error";
@@ -64,14 +65,22 @@ export async function getPublicServices(params?: {
   }
 }
 
-export async function getServiceById(id: string): Promise<{ service?: ServiceItem; error?: string }> {
+export async function getServiceById(id: string): Promise<{
+  service?: ServiceItem;
+  error?: string;
+  isNotFound?: boolean;
+}> {
   try {
     const res = await fetch(`${API_BASE_URL}/api/services/${id}`, {
-      next: { revalidate: 15 },
+      cache: "no-store",
     });
 
+    if (res.status === 404) {
+      return { isNotFound: true, error: "Service listing not found or is currently unavailable" };
+    }
+
     if (!res.ok) {
-      return { error: "Service not found or unavailable" };
+      return { error: `Server error loading service (${res.status})` };
     }
 
     const data = await res.json();

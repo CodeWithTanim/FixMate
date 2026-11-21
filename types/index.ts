@@ -36,6 +36,14 @@ export interface ServiceItem {
   serviceArea: string;
   technicianName: string;
   technicianEmail: string;
+  technicianId?: string;
+  technician?: {
+    id?: string;
+    name?: string;
+    image?: string | null;
+    area?: string | null;
+    bio?: string | null;
+  };
   approvalStatus: "pending" | "approved" | "rejected";
   isAvailable: boolean;
   createdAt: string;

@@ -11,10 +11,33 @@ export default async function ServiceDetailsPage(props: {
   params: Promise<{ id: string }>;
 }) {
   const { id } = await props.params;
-  const { service, error } = await getServiceById(id);
+  const { service, error, isNotFound } = await getServiceById(id);
+
+  if (isNotFound) {
+    notFound();
+  }
 
   if (error || !service) {
-    notFound();
+    return (
+      <div className="mx-auto max-w-lg px-4 py-20 text-center space-y-4">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-100 text-amber-800">
+          <AlertCircle className="h-8 w-8" />
+        </div>
+        <h1 className="text-xl font-bold text-[#152C2B]">Unable to Load Service Listing</h1>
+        <p className="text-xs text-[#526564]">
+          {error || "A connection issue occurred while retrieving this service. Please verify your connection."}
+        </p>
+        <div className="pt-2">
+          <Link
+            href="/services"
+            className="inline-flex items-center gap-2 rounded-xl bg-[#18756B] px-5 py-2.5 text-xs font-bold text-white hover:bg-[#135d55] transition"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            <span>Return to Service Catalog</span>
+          </Link>
+        </div>
+      </div>
+    );
   }
 
   // Check current user session for role-aware request flow
@@ -120,21 +143,45 @@ export default async function ServiceDetailsPage(props: {
               </p>
             </div>
 
-            {/* Technician Profile Card */}
-            <div className="rounded-2xl border border-[#DCE5DF] bg-[#F6F5EF] p-4 space-y-2">
+            {/* Technician Profile Card (F14: photo, area, bio) */}
+            <div className="rounded-2xl border border-[#DCE5DF] bg-[#F6F5EF] p-4 space-y-3">
               <span className="text-[10px] uppercase font-bold text-[#18756B]">Assigned Technician</span>
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#0B3638] text-white font-bold text-sm">
-                  {service.technicianName?.[0] || "T"}
-                </div>
-                <div>
-                  <div className="text-xs font-bold text-[#152C2B]">{service.technicianName}</div>
+                {service.technician?.image ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img
+                    src={service.technician.image}
+                    alt={service.technician.name || service.technicianName}
+                    className="h-11 w-11 rounded-full object-cover border border-[#DCE5DF]"
+                  />
+                ) : (
+                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#0B3638] text-white font-bold text-sm">
+                    {(service.technician?.name || service.technicianName)?.[0] || "T"}
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <div className="text-xs font-bold text-[#152C2B] truncate">
+                    {service.technician?.name || service.technicianName}
+                  </div>
                   <div className="text-[10px] text-[#526564] flex items-center gap-1">
-                    <CheckCircle2 className="h-3 w-3 text-emerald-600" />
-                    <span>Certified FixMate Partner</span>
+                    <CheckCircle2 className="h-3 w-3 text-emerald-600 shrink-0" />
+                    <span>Verified Professional Technician</span>
                   </div>
                 </div>
               </div>
+
+              {service.technician?.area && (
+                <div className="text-[11px] text-[#526564] flex items-center gap-1 pt-1 border-t border-[#DCE5DF]/60">
+                  <MapPin className="h-3 w-3 text-[#18756B] shrink-0" />
+                  <span>Base Location: <strong>{service.technician.area}</strong></span>
+                </div>
+              )}
+
+              {service.technician?.bio && (
+                <p className="text-[11px] text-[#526564] leading-relaxed italic bg-white p-2.5 rounded-xl border border-[#DCE5DF]/60">
+                  &ldquo;{service.technician.bio}&rdquo;
+                </p>
+              )}
             </div>
 
             {/* Action based on session role */}
