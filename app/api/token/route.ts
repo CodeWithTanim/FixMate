@@ -70,15 +70,17 @@ export async function POST() {
     const audience = process.env.JWT_AUDIENCE || "fixmate-api";
     const secretKey = new TextEncoder().encode(secretStr);
 
-    const user = session.user as { id: string; email: string; role?: string };
-    const role = user.role || "customer";
+    const user = session.user as Record<string, unknown>;
+    const role = typeof user.role === "string" ? user.role : "customer";
+    const userEmail = typeof user.email === "string" ? user.email : "";
+    const userId = String(user.id || user._id || userEmail || "anonymous");
 
     const token = await new SignJWT({
-      email: user.email,
+      email: userEmail,
       role,
     })
       .setProtectedHeader({ alg: "HS256" })
-      .setSubject(user.id)
+      .setSubject(userId)
       .setIssuer(issuer)
       .setAudience(audience)
       .setIssuedAt()

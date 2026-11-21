@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import toast from "react-hot-toast";
@@ -8,7 +8,7 @@ import { authClient } from "@/lib/auth-client";
 import { Lock, Mail, Loader2 } from "lucide-react";
 import { getSafeRedirectUrl } from "@/lib/utils";
 
-export default function SignInPage() {
+function SignInForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl");
@@ -18,6 +18,21 @@ export default function SignInPage() {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+
+  const { data: session, isPending } = authClient.useSession();
+
+  // If already authenticated, redirect cleanly
+  useEffect(() => {
+    if (!isPending && session?.user) {
+      const userRole = (session.user as { role?: string })?.role || "customer";
+      let defaultRoleUrl = "/dashboard/customer";
+      if (userRole === "admin") defaultRoleUrl = "/dashboard/admin";
+      else if (userRole === "technician") defaultRoleUrl = "/dashboard/technician";
+
+      const targetUrl = getSafeRedirectUrl(callbackUrl, defaultRoleUrl);
+      router.replace(targetUrl);
+    }
+  }, [session, isPending, callbackUrl, router]);
 
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
@@ -200,5 +215,20 @@ export default function SignInPage() {
         </Link>
       </div>
     </div>
+  );
+}
+
+export default function SignInPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex flex-col items-center justify-center p-8 space-y-3">
+          <Loader2 className="h-6 w-6 animate-spin text-[#18756B]" />
+          <p className="text-xs text-[#526564]">Loading FixMate sign in...</p>
+        </div>
+      }
+    >
+      <SignInForm />
+    </Suspense>
   );
 }

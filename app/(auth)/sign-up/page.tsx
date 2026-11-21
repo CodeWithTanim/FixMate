@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import toast from "react-hot-toast";
@@ -8,7 +8,7 @@ import { authClient } from "@/lib/auth-client";
 import { User, Mail, Lock, Loader2, ShieldCheck, Wrench } from "lucide-react";
 import { getSafeRedirectUrl } from "@/lib/utils";
 
-export default function SignUpPage() {
+function SignUpForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl");
@@ -20,6 +20,21 @@ export default function SignUpPage() {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+
+  const { data: session, isPending } = authClient.useSession();
+
+  // If already authenticated, redirect cleanly
+  useEffect(() => {
+    if (!isPending && session?.user) {
+      const userRole = (session.user as { role?: string })?.role || "customer";
+      let defaultRoleUrl = "/dashboard/customer";
+      if (userRole === "admin") defaultRoleUrl = "/dashboard/admin";
+      else if (userRole === "technician") defaultRoleUrl = "/dashboard/technician";
+
+      const targetUrl = getSafeRedirectUrl(callbackUrl, defaultRoleUrl);
+      router.replace(targetUrl);
+    }
+  }, [session, isPending, callbackUrl, router]);
 
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
@@ -51,27 +66,21 @@ export default function SignUpPage() {
       setErrorMsg("Please enter your full name.");
       return;
     }
-
     if (!email.trim()) {
-      setErrorMsg("Please enter your email.");
+      setErrorMsg("Please enter your email address.");
       return;
     }
-
-    // Password validation: at least 6 chars, with uppercase and lowercase
     if (password.length < 6) {
-      setErrorMsg("Password must be at least 6 characters long.");
+      setErrorMsg("Password must be at least 6 characters.");
       return;
     }
-
-    const hasUpper = /[A-Z]/.test(password);
-    const hasLower = /[a-z]/.test(password);
-    if (!hasUpper || !hasLower) {
-      setErrorMsg("Password must contain at least one uppercase and one lowercase letter.");
+    if (!/[A-Z]/.test(password) || !/[a-z]/.test(password)) {
+      setErrorMsg("Password must contain both uppercase and lowercase letters.");
       return;
     }
 
     setLoading(true);
-    const toastId = toast.loading("Creating your FixMate account...");
+    const toastId = toast.loading("Creating your account...");
 
     try {
       const res = await authClient.signUp.email({
@@ -82,15 +91,16 @@ export default function SignUpPage() {
       } as unknown as { name: string; email: string; password: string });
 
       if (res.error) {
-        toast.error(res.error.message || "Failed to create account.", { id: toastId });
-        setErrorMsg(res.error.message || "Registration failed.");
+        toast.error(res.error.message || "Failed to create account. Please try again.", { id: toastId });
+        setErrorMsg(res.error.message || "Sign up failed.");
         setLoading(false);
         return;
       }
 
       toast.success("Account created successfully!", { id: toastId });
 
-      const targetUrl = getSafeRedirectUrl(callbackUrl, `/dashboard/${role}`);
+      const defaultRoleUrl = role === "technician" ? "/dashboard/technician" : "/dashboard/customer";
+      const targetUrl = getSafeRedirectUrl(callbackUrl, defaultRoleUrl);
       router.push(targetUrl);
       router.refresh();
     } catch (err: unknown) {
@@ -105,7 +115,7 @@ export default function SignUpPage() {
     <div className="space-y-6">
       <div className="space-y-1 text-center">
         <h2 className="text-xl font-bold tracking-tight text-slate-900">Create an Account</h2>
-        <p className="text-xs text-slate-500">Join FixMate as a customer or service technician</p>
+        <p className="text-xs text-slate-500">Join FixMate to request repairs or provide expert services</p>
       </div>
 
       {errorMsg && (
@@ -114,65 +124,62 @@ export default function SignUpPage() {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Role Selection */}
-        <div>
-          <label className="block text-xs font-bold text-[#152C2B] mb-1.5">
-            I want to join as
-          </label>
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              type="button"
-              onClick={() => setRole("customer")}
-              className={`flex items-center justify-center gap-2 rounded-xl border p-3 text-xs font-bold transition cursor-pointer ${
-                role === "customer"
-                  ? "border-[#18756B] bg-[#18756B]/10 text-[#18756B] shadow-xs"
-                  : "border-[#DCE5DF] bg-white text-[#526564] hover:bg-[#F6F5EF]"
-              }`}
-            >
-              <ShieldCheck className="h-4 w-4 text-[#18756B]" />
-              <span>Customer</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setRole("technician")}
-              className={`flex items-center justify-center gap-2 rounded-xl border p-3 text-xs font-bold transition cursor-pointer ${
-                role === "technician"
-                  ? "border-[#18756B] bg-[#18756B]/10 text-[#18756B] shadow-xs"
-                  : "border-[#DCE5DF] bg-white text-[#526564] hover:bg-[#F6F5EF]"
-              }`}
-            >
-              <Wrench className="h-4 w-4 text-[#18756B]" />
-              <span>Technician</span>
-            </button>
-          </div>
+      {/* Role Selector Tabs */}
+      <div className="space-y-1.5">
+        <label className="block text-xs font-semibold text-slate-700">Account Type</label>
+        <div className="grid grid-cols-2 gap-2 p-1 bg-[#F6F5EF] rounded-xl border border-[#DCE5DF]">
+          <button
+            type="button"
+            onClick={() => setRole("customer")}
+            className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-bold transition cursor-pointer ${
+              role === "customer"
+                ? "bg-white text-[#18756B] shadow-2xs border border-[#DCE5DF]"
+                : "text-[#526564] hover:text-[#152C2B]"
+            }`}
+          >
+            <ShieldCheck className="h-4 w-4" />
+            <span>Customer</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setRole("technician")}
+            className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-bold transition cursor-pointer ${
+              role === "technician"
+                ? "bg-white text-[#18756B] shadow-2xs border border-[#DCE5DF]"
+                : "text-[#526564] hover:text-[#152C2B]"
+            }`}
+          >
+            <Wrench className="h-4 w-4" />
+            <span>Technician</span>
+          </button>
         </div>
+      </div>
 
+      <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-xs font-bold text-[#152C2B] mb-1" htmlFor="name">
+          <label className="block text-xs font-semibold text-slate-700 mb-1" htmlFor="name">
             Full Name
           </label>
           <div className="relative">
-            <User className="absolute left-3 top-2.5 h-4 w-4 text-[#526564]" />
+            <User className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
             <input
               id="name"
               type="text"
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="John Doe"
+              placeholder="Alex Johnson"
               className="w-full rounded-xl border border-[#DCE5DF] py-2.5 pl-9 pr-3 text-sm text-[#152C2B] placeholder:text-[#526564]/50 focus:border-[#18756B] focus:outline-none focus:ring-1 focus:ring-[#18756B]"
             />
           </div>
         </div>
 
         <div>
-          <label className="block text-xs font-bold text-[#152C2B] mb-1" htmlFor="email">
+          <label className="block text-xs font-semibold text-slate-700 mb-1" htmlFor="email">
             Email Address
           </label>
           <div className="relative">
-            <Mail className="absolute left-3 top-2.5 h-4 w-4 text-[#526564]" />
+            <Mail className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
             <input
               id="email"
               type="email"
@@ -272,5 +279,20 @@ export default function SignUpPage() {
         </Link>
       </div>
     </div>
+  );
+}
+
+export default function SignUpPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex flex-col items-center justify-center p-8 space-y-3">
+          <Loader2 className="h-6 w-6 animate-spin text-[#18756B]" />
+          <p className="text-xs text-[#526564]">Loading FixMate sign up...</p>
+        </div>
+      }
+    >
+      <SignUpForm />
+    </Suspense>
   );
 }

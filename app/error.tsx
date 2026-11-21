@@ -172,16 +172,22 @@ export default function ErrorBoundary({
                 Our automated monitor caught an unexpected hiccup while processing this view. Your account, bookings, and repair data remain safe.
               </p>
 
-              {/* Action Buttons */}
-              <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
-                <button
-                  onClick={handleRetry}
-                  disabled={isRetrying}
-                  className="inline-flex items-center justify-center gap-2 rounded-full bg-[#18756B] hover:bg-[#135d55] text-white px-7 py-3 text-xs font-bold uppercase tracking-wider shadow-md hover:shadow-lg transition-all duration-200 transform hover:-translate-y-0.5 active:translate-y-0 cursor-pointer disabled:opacity-50"
+              {/* Action Buttons: Pure native browser compatible links for zero-fail clicks */}
+              <div className="pt-2 flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3 w-full sm:w-auto">
+                <a
+                  href="javascript:location.reload()"
+                  className="inline-flex items-center justify-center gap-2 rounded-full bg-[#18756B] hover:bg-[#135d55] text-white px-7 py-3 text-xs font-bold uppercase tracking-wider shadow-md hover:shadow-lg transition-all duration-200 cursor-pointer"
                 >
-                  <RefreshCw className={`h-4 w-4 ${isRetrying ? "animate-spin" : ""}`} />
-                  <span>{isRetrying ? "Retrying..." : "Try Again"}</span>
-                </button>
+                  <RefreshCw className="h-4 w-4" />
+                  <span>Try Again</span>
+                </a>
+
+                <a
+                  href="/dashboard"
+                  className="inline-flex items-center justify-center gap-2 rounded-full bg-[#0B3638] hover:bg-[#152C2B] text-white px-6 py-3 text-xs font-bold uppercase tracking-wider shadow-xs hover:shadow-md transition-all duration-200"
+                >
+                  <span>Go to Dashboard</span>
+                </a>
 
                 <a
                   href="/"
@@ -192,31 +198,24 @@ export default function ErrorBoundary({
                 </a>
               </div>
 
-              {/* Technical Details Accordion */}
-              {error?.message && (
-                <div className="pt-2 w-full max-w-sm">
-                  <button
-                    onClick={() => setShowDetails(!showDetails)}
-                    className="flex items-center gap-1.5 text-[11px] font-semibold text-[#526564] hover:text-[#152C2B] transition"
-                  >
-                    <Terminal className="h-3.5 w-3.5" />
-                    <span>{showDetails ? "Hide Error Diagnostics" : "View Error Diagnostics"}</span>
-                    {showDetails ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-                  </button>
+              {/* Technical Details: Native HTML details/summary ensures toggling works even if React hydration fails */}
+              <details className="pt-2 w-full max-w-sm group">
+                <summary className="flex items-center gap-1.5 text-[11px] font-semibold text-[#526564] hover:text-[#152C2B] transition cursor-pointer select-none list-none">
+                  <Terminal className="h-3.5 w-3.5 text-[#18756B]" />
+                  <span>View Error Diagnostics</span>
+                  <ChevronDown className="h-3.5 w-3.5 group-open:rotate-180 transition-transform" />
+                </summary>
 
-                  {showDetails && (
-                    <div className="mt-2 p-3 rounded-2xl bg-slate-900 text-slate-200 font-mono text-[11px] leading-relaxed break-all border border-slate-800 shadow-inner">
-                      <div className="text-rose-400 font-bold mb-1">Error Message:</div>
-                      <div>{error.message}</div>
-                      {error.digest && (
-                        <div className="mt-2 text-slate-400 text-[10px]">
-                          Digest Code: <span className="text-emerald-400">{error.digest}</span>
-                        </div>
-                      )}
+                <div className="mt-2 p-3 rounded-2xl bg-slate-900 text-slate-200 font-mono text-[11px] leading-relaxed break-all border border-slate-800 shadow-inner">
+                  <div className="text-rose-400 font-bold mb-1">Diagnostic Detail:</div>
+                  <div>{error?.message || "Diagnostic signal interrupted."}</div>
+                  {error?.digest && (
+                    <div className="mt-2 text-slate-400 text-[10px]">
+                      Digest Code: <span className="text-emerald-400">{error.digest}</span>
                     </div>
                   )}
                 </div>
-              )}
+              </details>
 
             </div>
 

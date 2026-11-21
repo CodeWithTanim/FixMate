@@ -2,23 +2,33 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 
+export const dynamic = "force-dynamic";
+
 export default async function CustomerSegmentLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const reqHeaders = await headers();
-  const session = await auth.api.getSession({
-    headers: reqHeaders,
-  });
+  try {
+    const reqHeaders = await headers();
+    const session = await auth.api.getSession({
+      headers: reqHeaders,
+    });
 
-  if (!session || !session.user) {
-    redirect("/sign-in?callbackUrl=/dashboard/customer");
-  }
-
-  const role = (session.user as { role?: string }).role || "customer";
-  if (role !== "customer") {
-    redirect(role === "admin" ? "/dashboard/admin" : "/dashboard/technician");
+    if (session?.user) {
+      const role = (session.user as { role?: string }).role || "customer";
+      if (role !== "customer") {
+        redirect(role === "admin" ? "/dashboard/admin" : "/dashboard/technician");
+      }
+    }
+  } catch (err: unknown) {
+    if (err && typeof err === "object" && "digest" in err) {
+      const digest = String((err as { digest?: string }).digest);
+      if (digest.startsWith("NEXT_REDIRECT") || digest === "DYNAMIC_SERVER_USAGE") {
+        throw err;
+      }
+    }
+    console.warn("CustomerSegmentLayout session check warning:", err);
   }
 
   return <>{children}</>;
