@@ -3,19 +3,56 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import toast from "react-hot-toast";
-import { Wrench, Plus, Eye, EyeOff, Trash2, Edit3, Loader2 } from "lucide-react";
-import { apiRequest } from "@/lib/api/client";
-import type { ServiceItem } from "@/types";
+import {
+  Wrench,
+  Plus,
+  Eye,
+  EyeOff,
+  Trash2,
+  Edit3,
+  Loader2,
+  Upload,
+  Tag,
+  AlertCircle,
+  MapPin,
+  Clock,
+  DollarSign,
+} from "lucide-react";
+import { apiRequest, apiClient } from "@/lib/api/client";
+import type { ServiceItem, ServiceCategory, ServiceMode } from "@/types";
+
+const CATEGORIES: ServiceCategory[] = [
+  "Smartphone",
+  "Laptop & PC",
+  "AC",
+  "Refrigerator",
+  "TV",
+  "Washing Machine",
+  "Electrical",
+];
+
+const MODES: ServiceMode[] = ["Home Visit", "Shop Drop-off"];
 
 export default function MyServicesPage() {
   const [services, setServices] = useState<ServiceItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // Edit modal state
   const [editingService, setEditingService] = useState<ServiceItem | null>(null);
-  const [editPrice, setEditPrice] = useState("");
   const [editTitle, setEditTitle] = useState("");
+  const [editCategory, setEditCategory] = useState<ServiceCategory>("Smartphone");
+  const [editMode, setEditMode] = useState<ServiceMode>("Home Visit");
+  const [editPrice, setEditPrice] = useState("");
   const [editDuration, setEditDuration] = useState("");
   const [editArea, setEditArea] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editImage, setEditImage] = useState("");
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState("");
+
+  // Delete modal state
   const [deletingService, setDeletingService] = useState<{ id: string; title: string } | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -23,10 +60,13 @@ export default function MyServicesPage() {
   useEffect(() => {
     let active = true;
     const loadServices = async () => {
+      setLoading(true);
+      setErrorMsg(null);
       const res = await apiRequest<{ data: ServiceItem[] }>("/api/services-my");
       if (active) {
         setLoading(false);
         if (res.error) {
+          setErrorMsg(res.error);
           toast.error(res.error);
           return;
         }
@@ -81,16 +121,75 @@ export default function MyServicesPage() {
   const handleStartEdit = (service: ServiceItem) => {
     setEditingService(service);
     setEditTitle(service.title);
+    setEditCategory((service.category as ServiceCategory) || "Smartphone");
+    setEditMode((service.serviceMode as ServiceMode) || "Home Visit");
     setEditPrice(service.basePrice.toString());
     setEditDuration(service.estimatedDuration);
     setEditArea(service.serviceArea);
+    setEditDescription(service.description);
+    setEditImage(service.image || "");
+    setFormError("");
+  };
+
+  const handleImageFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 3 * 1024 * 1024) {
+      toast.error("Image file size must be under 3MB.");
+      return;
+    }
+
+    try {
+      setUploadingImage(true);
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const base64 = reader.result as string;
+        try {
+          const res = await apiClient.post<{ url: string }>("/api/upload", { image: base64 });
+          setEditImage(res.url);
+          toast.success("Replacement image uploaded successfully!");
+        } catch (err: unknown) {
+          const error = err as { message?: string };
+          toast.error(error.message || "Image upload failed");
+        } finally {
+          setUploadingImage(false);
+        }
+      };
+      reader.readAsDataURL(file);
+    } catch {
+      setUploadingImage(false);
+      toast.error("Failed to read image file");
+    }
   };
 
   const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingService) return;
+    setFormError("");
 
-    const id = editingService.id || editingService._id;
+    const price = parseFloat(editPrice);
+    if (isNaN(price) || price < 0.5) {
+      setFormError("Base price must be a valid amount of at least $0.50 USD.");
+      return;
+    }
+
+    if (editTitle.trim().length < 5 || editTitle.trim().length > 120) {
+      setFormError("Title must be between 5 and 120 characters.");
+      return;
+    }
+
+    if (editDescription.trim().length < 20 || editDescription.trim().length > 2000) {
+      setFormError("Description must be between 20 and 2000 characters.");
+      return;
+    }
+
+    if (!editArea.trim() || !editDuration.trim()) {
+      setFormError("Please fill in duration and coverage area.");
+      return;
+    }
+
+    const id = (editingService.id || editingService._id) as string;
     setSaving(true);
     const toastId = toast.loading("Saving changes & resubmitting for review...");
 
@@ -98,15 +197,20 @@ export default function MyServicesPage() {
       method: "PATCH",
       body: JSON.stringify({
         title: editTitle.trim(),
-        basePrice: parseFloat(editPrice),
+        category: editCategory,
+        serviceMode: editMode,
+        basePrice: price,
         estimatedDuration: editDuration.trim(),
         serviceArea: editArea.trim(),
+        description: editDescription.trim(),
+        image: editImage || editingService.image,
       }),
     });
 
     setSaving(false);
 
     if (res.error) {
+      setFormError(res.error);
       toast.error(res.error, { id: toastId });
       return;
     }
@@ -138,6 +242,18 @@ export default function MyServicesPage() {
         <div className="flex justify-center py-16">
           <Loader2 className="h-8 w-8 animate-spin text-[#18756B]" />
         </div>
+      ) : errorMsg ? (
+        <div className="rounded-3xl border border-rose-200 bg-rose-50 p-8 text-center space-y-3">
+          <AlertCircle className="h-8 w-8 text-rose-600 mx-auto" />
+          <h3 className="text-sm font-bold text-rose-900">Failed to load service offerings</h3>
+          <p className="text-xs text-rose-700 max-w-sm mx-auto">{errorMsg}</p>
+          <button
+            onClick={() => setRefreshKey((k) => k + 1)}
+            className="rounded-xl bg-rose-600 px-4 py-2 text-xs font-bold text-white hover:bg-rose-700 transition"
+          >
+            Retry
+          </button>
+        </div>
       ) : services.length === 0 ? (
         <div className="rounded-3xl border border-dashed border-[#DCE5DF] bg-white p-12 text-center space-y-3">
           <Wrench className="h-8 w-8 text-[#526564] mx-auto" />
@@ -168,6 +284,21 @@ export default function MyServicesPage() {
                 className="flex flex-col justify-between rounded-2xl border border-[#DCE5DF] bg-white p-5 shadow-2xs space-y-4"
               >
                 <div className="space-y-3">
+                  {/* Thumbnail Image */}
+                  <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-[#F6F5EF] border border-[#DCE5DF]">
+                    {service.image ? (
+                      <img
+                        src={service.image}
+                        alt={service.title}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-[#526564]">
+                        <Wrench className="h-8 w-8 text-[#526564]/40" />
+                      </div>
+                    )}
+                  </div>
+
                   <div className="flex items-center justify-between text-xs">
                     <span
                       className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
@@ -188,13 +319,21 @@ export default function MyServicesPage() {
                   <h3 className="text-base font-bold text-[#152C2B] line-clamp-1">{service.title}</h3>
                   <p className="text-xs text-[#526564] line-clamp-2">{service.description}</p>
 
-                  <div className="text-xs text-[#526564] space-y-1 pt-2 border-t border-[#DCE5DF]/60">
+                  <div className="text-xs text-[#526564] space-y-1.5 pt-2 border-t border-[#DCE5DF]/60">
                     <div className="flex justify-between">
-                      <span>Base Rate:</span>
-                      <strong className="text-[#152C2B]">${service.basePrice}</strong>
+                      <span className="flex items-center gap-1"><Tag className="h-3 w-3" /> Category:</span>
+                      <strong className="text-[#152C2B]">{service.category}</strong>
                     </div>
                     <div className="flex justify-between">
-                      <span>Area:</span>
+                      <span className="flex items-center gap-1"><DollarSign className="h-3 w-3" /> Base Rate:</span>
+                      <strong className="text-[#18756B]">${service.basePrice.toFixed(2)}</strong>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> Duration:</span>
+                      <span className="text-[#152C2B]">{service.estimatedDuration}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> Area:</span>
                       <span className="text-[#152C2B]">{service.serviceArea}</span>
                     </div>
                     <div className="flex justify-between">
@@ -210,7 +349,7 @@ export default function MyServicesPage() {
                 <div className="flex items-center justify-between pt-3 border-t border-[#DCE5DF]/60 gap-2">
                   <button
                     onClick={() => handleToggleAvailability(id, service.isAvailable)}
-                    className="flex items-center gap-1 rounded-lg border border-[#DCE5DF] bg-[#F6F5EF] px-2.5 py-1.5 text-xs font-semibold text-[#152C2B] hover:bg-[#DCE5DF]"
+                    className="flex items-center gap-1 rounded-lg border border-[#DCE5DF] bg-[#F6F5EF] px-2.5 py-1.5 text-xs font-semibold text-[#152C2B] hover:bg-[#DCE5DF] cursor-pointer"
                     title="Toggle public visibility"
                   >
                     {service.isAvailable ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
@@ -220,7 +359,7 @@ export default function MyServicesPage() {
                   <div className="flex gap-1.5">
                     <button
                       onClick={() => handleStartEdit(service)}
-                      className="rounded-lg border border-[#DCE5DF] p-1.5 text-[#526564] hover:bg-[#F6F5EF]"
+                      className="rounded-lg border border-[#DCE5DF] p-1.5 text-[#526564] hover:bg-[#F6F5EF] cursor-pointer"
                       title="Edit service details"
                     >
                       <Edit3 className="h-3.5 w-3.5" />
@@ -240,48 +379,92 @@ export default function MyServicesPage() {
         </div>
       )}
 
-      {/* Edit Modal */}
+      {/* Edit Modal - Full CRUD Form */}
       {editingService && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
-          <div className="relative w-full max-w-md rounded-3xl border border-[#DCE5DF] bg-white p-6 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs overflow-y-auto">
+          <div className="relative w-full max-w-lg rounded-3xl border border-[#DCE5DF] bg-white p-6 shadow-2xl my-8 max-h-[90vh] overflow-y-auto">
             <h2 className="text-lg font-bold text-[#152C2B] mb-1">Edit Service Listing</h2>
             <p className="text-xs text-amber-800 bg-amber-50 p-2.5 rounded-xl border border-amber-200 mb-4">
               Note: Updating content will reset the service status to <strong>pending</strong> for admin moderation.
             </p>
 
-            <form onSubmit={handleSaveEdit} className="space-y-3 text-xs">
+            {formError && (
+              <div className="p-3 mb-4 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700 flex items-center gap-2">
+                <AlertCircle className="h-4 w-4 shrink-0" />
+                <span>{formError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleSaveEdit} className="space-y-3.5 text-xs">
               <div>
-                <label className="block font-bold text-[#152C2B] mb-1">Title</label>
+                <label className="block font-bold text-[#152C2B] mb-1">Service Title</label>
                 <input
                   type="text"
                   required
                   value={editTitle}
                   onChange={(e) => setEditTitle(e.target.value)}
-                  className="w-full rounded-xl border border-[#DCE5DF] p-2 text-xs"
+                  className="w-full rounded-xl border border-[#DCE5DF] p-2.5 text-xs text-[#152C2B] focus:border-[#18756B] focus:outline-hidden"
+                  placeholder="e.g. Master iPhone Display & Battery Replacement"
                 />
               </div>
 
-              <div>
-                <label className="block font-bold text-[#152C2B] mb-1">Base Price ($ USD)</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  required
-                  value={editPrice}
-                  onChange={(e) => setEditPrice(e.target.value)}
-                  className="w-full rounded-xl border border-[#DCE5DF] p-2 text-xs"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-[#152C2B] mb-1">Category</label>
+                  <select
+                    value={editCategory}
+                    onChange={(e) => setEditCategory(e.target.value as ServiceCategory)}
+                    className="w-full rounded-xl border border-[#DCE5DF] p-2.5 text-xs text-[#152C2B] bg-white focus:border-[#18756B] focus:outline-hidden"
+                  >
+                    {CATEGORIES.map((cat) => (
+                      <option key={cat} value={cat}>
+                        {cat}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-[#152C2B] mb-1">Service Mode</label>
+                  <select
+                    value={editMode}
+                    onChange={(e) => setEditMode(e.target.value as ServiceMode)}
+                    className="w-full rounded-xl border border-[#DCE5DF] p-2.5 text-xs text-[#152C2B] bg-white focus:border-[#18756B] focus:outline-hidden"
+                  >
+                    {MODES.map((mode) => (
+                      <option key={mode} value={mode}>
+                        {mode}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
-              <div>
-                <label className="block font-bold text-[#152C2B] mb-1">Duration</label>
-                <input
-                  type="text"
-                  required
-                  value={editDuration}
-                  onChange={(e) => setEditDuration(e.target.value)}
-                  className="w-full rounded-xl border border-[#DCE5DF] p-2 text-xs"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-[#152C2B] mb-1">Base Price ($ USD)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0.50"
+                    required
+                    value={editPrice}
+                    onChange={(e) => setEditPrice(e.target.value)}
+                    className="w-full rounded-xl border border-[#DCE5DF] p-2.5 text-xs text-[#152C2B] focus:border-[#18756B] focus:outline-hidden"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-[#152C2B] mb-1">Estimated Duration</label>
+                  <input
+                    type="text"
+                    required
+                    value={editDuration}
+                    onChange={(e) => setEditDuration(e.target.value)}
+                    className="w-full rounded-xl border border-[#DCE5DF] p-2.5 text-xs text-[#152C2B] focus:border-[#18756B] focus:outline-hidden"
+                    placeholder="e.g. 1 - 2 hours"
+                  />
+                </div>
               </div>
 
               <div>
@@ -291,22 +474,63 @@ export default function MyServicesPage() {
                   required
                   value={editArea}
                   onChange={(e) => setEditArea(e.target.value)}
-                  className="w-full rounded-xl border border-[#DCE5DF] p-2 text-xs"
+                  className="w-full rounded-xl border border-[#DCE5DF] p-2.5 text-xs text-[#152C2B] focus:border-[#18756B] focus:outline-hidden"
+                  placeholder="e.g. Dhanmondi, Dhaka"
                 />
+              </div>
+
+              <div>
+                <label className="block font-bold text-[#152C2B] mb-1">Description</label>
+                <textarea
+                  required
+                  rows={3}
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  className="w-full rounded-xl border border-[#DCE5DF] p-2.5 text-xs text-[#152C2B] focus:border-[#18756B] focus:outline-hidden"
+                  placeholder="Detailed breakdown of diagnostics, equipment used, and service terms (at least 20 characters)..."
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-[#152C2B] mb-1">Service Image</label>
+                <div className="flex items-center gap-3">
+                  {editImage ? (
+                    <img
+                      src={editImage}
+                      alt="Service preview"
+                      className="h-14 w-20 rounded-xl object-cover border border-[#DCE5DF]"
+                    />
+                  ) : (
+                    <div className="h-14 w-20 rounded-xl bg-[#F6F5EF] border border-[#DCE5DF] flex items-center justify-center text-[#526564]">
+                      <Wrench className="h-5 w-5 text-[#526564]/40" />
+                    </div>
+                  )}
+                  <label className="cursor-pointer inline-flex items-center gap-1.5 rounded-xl border border-[#DCE5DF] bg-[#F6F5EF] px-3 py-2 text-xs font-bold text-[#152C2B] hover:bg-[#DCE5DF] transition">
+                    <Upload className="h-3.5 w-3.5" />
+                    <span>{uploadingImage ? "Uploading..." : "Replace Photo"}</span>
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/gif"
+                      className="hidden"
+                      onChange={handleImageFileChange}
+                      disabled={uploadingImage}
+                    />
+                  </label>
+                </div>
               </div>
 
               <div className="pt-3 flex gap-2">
                 <button
                   type="button"
                   onClick={() => setEditingService(null)}
-                  className="flex-1 rounded-xl border border-[#DCE5DF] py-2 font-bold text-[#526564]"
+                  className="flex-1 rounded-xl border border-[#DCE5DF] py-2.5 font-bold text-[#526564] hover:bg-[#F6F5EF] transition cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  disabled={saving}
-                  className="flex-1 rounded-xl bg-[#18756B] py-2 font-bold text-white hover:bg-[#135d55]"
+                  disabled={saving || uploadingImage}
+                  className="flex-1 rounded-xl bg-[#18756B] py-2.5 font-bold text-white hover:bg-[#135d55] disabled:opacity-50 transition shadow-xs cursor-pointer"
                 >
                   {saving ? "Saving..." : "Save & Resubmit"}
                 </button>

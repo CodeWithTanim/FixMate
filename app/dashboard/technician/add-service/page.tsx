@@ -44,7 +44,7 @@ export default function AddServicePage() {
     if (!file) return;
 
     if (file.size > 3 * 1024 * 1024) {
-      toast.error("Image file size must be under 3MB (Vercel payload compatibility)");
+      toast.error("Image file size must be under 3MB.");
       return;
     }
 

@@ -115,6 +115,7 @@ export default function TechnicianRequestsPage() {
 
   const filteredRequests = requests.filter((r) => {
     if (statusFilter === "all") return true;
+    if (statusFilter === "rejected") return ["rejected", "cancelled"].includes(r.status);
     return r.status === statusFilter;
   });
 

@@ -10,10 +10,12 @@ export default function AdminServicesPage() {
   const [services, setServices] = useState<ServiceItem[]>([]);
   const [filter, setFilter] = useState<"all" | "pending" | "approved" | "rejected">("pending");
   const [loading, setLoading] = useState(true);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
     const loadServices = async () => {
+      setLoading(true);
       const query = filter !== "all" ? `?status=${filter}` : "";
       const res = await apiRequest<{ data: ServiceItem[] }>(`/api/admin/services${query}`);
       if (active) {
@@ -33,11 +35,14 @@ export default function AdminServicesPage() {
   }, [filter]);
 
   const handleUpdateApproval = async (id: string, status: "approved" | "rejected") => {
+    if (updatingId) return;
+    setUpdatingId(id);
     const toastId = toast.loading(`Updating service to ${status}...`);
     const res = await apiRequest(`/api/admin/services/${id}/approval`, {
       method: "PATCH",
       body: JSON.stringify({ approvalStatus: status }),
     });
+    setUpdatingId(null);
 
     if (res.error) {
       toast.error(res.error, { id: toastId });
@@ -45,9 +50,13 @@ export default function AdminServicesPage() {
     }
 
     toast.success(`Service marked as ${status}`, { id: toastId });
-    setServices((prev) =>
-      prev.map((s) => (s.id === id || s._id === id ? { ...s, approvalStatus: status } : s))
-    );
+    if (filter !== "all") {
+      setServices((prev) => prev.filter((s) => s.id !== id && s._id !== id));
+    } else {
+      setServices((prev) =>
+        prev.map((s) => (s.id === id || s._id === id ? { ...s, approvalStatus: status } : s))
+      );
+    }
   };
 
   return (
@@ -146,19 +155,19 @@ export default function AdminServicesPage() {
                 <div className="flex items-center gap-2 self-end md:self-center shrink-0">
                   <button
                     onClick={() => handleUpdateApproval(id, "approved")}
-                    disabled={isApproved}
+                    disabled={isApproved || updatingId === id}
                     className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-40 transition cursor-pointer"
                   >
                     <CheckCircle2 className="h-3.5 w-3.5" />
-                    <span>Approve</span>
+                    <span>{updatingId === id ? "Updating..." : "Approve"}</span>
                   </button>
                   <button
                     onClick={() => handleUpdateApproval(id, "rejected")}
-                    disabled={service.approvalStatus === "rejected"}
+                    disabled={service.approvalStatus === "rejected" || updatingId === id}
                     className="flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-xs font-bold text-rose-700 hover:bg-rose-100 disabled:opacity-40 transition cursor-pointer"
                   >
                     <XCircle className="h-3.5 w-3.5" />
-                    <span>Reject</span>
+                    <span>{updatingId === id ? "Updating..." : "Reject"}</span>
                   </button>
                 </div>
               </div>

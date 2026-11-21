@@ -65,7 +65,12 @@ export default function AdminBookingsPage() {
   }, []);
 
   const filteredBookings = bookings.filter((b) => {
-    const matchesStatus = statusFilter === "all" || b.status === statusFilter;
+    const matchesStatus =
+      statusFilter === "all"
+        ? true
+        : statusFilter === "cancelled"
+        ? ["cancelled", "rejected"].includes(b.status)
+        : b.status === statusFilter;
     const matchesSearch =
       b.serviceTitle.toLowerCase().includes(search.toLowerCase()) ||
       b.customerEmail.toLowerCase().includes(search.toLowerCase()) ||
@@ -119,6 +124,7 @@ export default function AdminBookingsPage() {
           {[
             { label: "All Bookings", value: "all" },
             { label: "Requested", value: "requested" },
+            { label: "Accepted", value: "accepted" },
             { label: "In-Progress", value: "in-progress" },
             { label: "Completed", value: "completed" },
             { label: "Cancelled / Rejected", value: "cancelled" },

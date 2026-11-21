@@ -108,15 +108,23 @@ export default function CustomerBookingsPage() {
     if (!bookingId) return;
     try {
       setPayingBookingId(bookingId);
-      const res = await apiClient.post<{ url: string; sessionId: string }>(
+      const res = await apiClient.post<{ url?: string; sessionId?: string; alreadySettled?: boolean }>(
         "/api/payments/create-checkout-session",
         { bookingId }
       );
+
+      if (res.alreadySettled) {
+        toast.success("This repair invoice is already settled.");
+        setPayingBookingId(null);
+        setRefreshKey((k) => k + 1);
+        return;
+      }
 
       if (res.url) {
         window.location.assign(res.url);
       } else {
         toast.error("Unable to initialize checkout session");
+        setPayingBookingId(null);
       }
     } catch (err: unknown) {
       const error = err as { message?: string };
@@ -128,6 +136,7 @@ export default function CustomerBookingsPage() {
   const filteredBookings = bookings.filter((b) => {
     if (statusFilter === "all") return true;
     if (statusFilter === "active") return ["requested", "accepted", "in-progress"].includes(b.status);
+    if (statusFilter === "cancelled") return ["cancelled", "rejected"].includes(b.status);
     return b.status === statusFilter;
   });
 

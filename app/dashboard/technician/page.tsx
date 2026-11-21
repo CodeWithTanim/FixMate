@@ -20,6 +20,7 @@ interface TechnicianStats {
   inProgress: number;
   completed: number;
   totalServices: number;
+  approvedServices: number;
   totalEarnings: number;
   recentRequests: Array<{
     id: string;
@@ -36,48 +37,76 @@ interface TechnicianStats {
 export default function TechnicianDashboard() {
   const [stats, setStats] = useState<TechnicianStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
-    async function loadStats() {
+    let active = true;
+    async function fetchStats() {
       try {
+        setErrorMsg(null);
         const res = await apiClient.get<{ stats: TechnicianStats }>("/api/stats/technician");
-        setStats(res.stats);
-      } catch (err) {
-        console.error("Failed to load technician statistics:", err);
+        if (active) {
+          setStats(res.stats);
+        }
+      } catch (err: unknown) {
+        if (active) {
+          const error = err as { message?: string };
+          setErrorMsg(error.message || "Failed to load technician metrics from server.");
+        }
       } finally {
-        setLoading(false);
+        if (active) {
+          setLoading(false);
+        }
       }
     }
-    loadStats();
-  }, []);
+    fetchStats();
+    return () => {
+      active = false;
+    };
+  }, [refreshKey]);
 
   const statCards = [
     {
-      label: "Service Requests",
-      value: stats ? stats.totalRequests : 0,
-      icon: Briefcase,
-      desc: "Incoming customer repairs",
+      label: "Total Services",
+      value: stats ? stats.totalServices : 0,
+      icon: Wrench,
+      desc: "All repair offerings created",
       color: "text-[#18756B] bg-[#18756B]/10",
+    },
+    {
+      label: "Approved Services",
+      value: stats ? stats.approvedServices : 0,
+      icon: CheckCircle,
+      desc: "Live in public repair directory",
+      color: "text-emerald-700 bg-emerald-50",
+    },
+    {
+      label: "Pending Requests",
+      value: stats ? stats.pendingRequests : 0,
+      icon: Briefcase,
+      desc: "New requests awaiting review",
+      color: "text-amber-700 bg-amber-50",
     },
     {
       label: "In-Progress Jobs",
       value: stats ? stats.inProgress : 0,
       icon: Clock,
       desc: "Active repairs underway",
-      color: "text-amber-700 bg-amber-50",
+      color: "text-sky-700 bg-sky-50",
     },
     {
       label: "Completed Repairs",
       value: stats ? stats.completed : 0,
       icon: CheckCircle,
-      desc: "Successfully billed jobs",
-      color: "text-emerald-700 bg-emerald-50",
+      desc: "Successfully resolved repairs",
+      color: "text-teal-700 bg-teal-50",
     },
     {
       label: "Settled Revenue",
       value: `$${stats ? stats.totalEarnings.toFixed(2) : "0.00"}`,
       icon: DollarSign,
-      desc: "Paid out via Stripe",
+      desc: "Collected for completed work",
       color: "text-[#0B3638] bg-[#0B3638]/10",
     },
   ];
@@ -110,29 +139,45 @@ export default function TechnicianDashboard() {
         </div>
       </div>
 
-      {/* Real Stat Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {statCards.map((s) => {
-          const Icon = s.icon;
-          return (
-            <div
-              key={s.label}
-              className="rounded-2xl border border-[#DCE5DF] bg-white p-5 shadow-2xs hover:shadow-xs transition"
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-[#526564]">{s.label}</span>
-                <div className={`rounded-xl p-2.5 ${s.color}`}>
-                  <Icon className="h-4 w-4" />
+      {/* Error state if API call failed */}
+      {errorMsg ? (
+        <div className="rounded-2xl border border-rose-200 bg-rose-50 p-6 text-center space-y-3">
+          <p className="text-xs font-bold text-rose-800">{errorMsg}</p>
+          <button
+            onClick={() => {
+              setLoading(true);
+              setRefreshKey((k) => k + 1);
+            }}
+            className="rounded-xl bg-rose-600 px-4 py-2 text-xs font-bold text-white hover:bg-rose-700 transition cursor-pointer"
+          >
+            Retry Loading Metrics
+          </button>
+        </div>
+      ) : (
+        /* Real Stat Cards */
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {statCards.map((s) => {
+            const Icon = s.icon;
+            return (
+              <div
+                key={s.label}
+                className="rounded-2xl border border-[#DCE5DF] bg-white p-5 shadow-2xs hover:shadow-xs transition"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-[#526564]">{s.label}</span>
+                  <div className={`rounded-xl p-2.5 ${s.color}`}>
+                    <Icon className="h-4 w-4" />
+                  </div>
                 </div>
+                <div className="mt-3 text-2xl font-black text-[#152C2B]">
+                  {loading ? <span className="text-slate-300">...</span> : s.value}
+                </div>
+                <p className="mt-1 text-[11px] text-[#526564]">{s.desc}</p>
               </div>
-              <div className="mt-3 text-2xl font-black text-[#152C2B]">
-                {loading ? <span className="text-slate-300">...</span> : s.value}
-              </div>
-              <p className="mt-1 text-[11px] text-[#526564]">{s.desc}</p>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Visual Analytics Chart: Repair Pipeline & Status Distribution */}
       <div className="rounded-2xl border border-[#DCE5DF] bg-white p-6 shadow-2xs space-y-4">

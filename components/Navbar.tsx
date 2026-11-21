@@ -3,11 +3,12 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Wrench, Menu, X, LogOut, LayoutDashboard, ChevronDown } from "lucide-react";
+import { Wrench, Menu, X, LogOut, LayoutDashboard, ChevronDown, User as UserIcon } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 import { signOutUser } from "@/lib/api/client";
 import toast from "react-hot-toast";
 import type { UserProfile } from "@/types";
+import UserAvatar from "./UserAvatar";
 
 export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -42,6 +43,7 @@ export default function Navbar() {
 
   const user = session?.user as unknown as UserProfile | undefined;
   const displayName = profileOverride?.name || user?.name;
+  const displayImage = profileOverride?.image !== undefined ? profileOverride.image : user?.image;
   const role = user?.role || "customer";
 
   const navLinks = [
@@ -100,9 +102,7 @@ export default function Navbar() {
                 onClick={() => setDropdownOpen(!dropdownOpen)}
                 className="flex items-center gap-2.5 rounded-xl border border-[#DCE5DF] bg-white px-3 py-1.5 shadow-2xs hover:bg-[#F6F5EF] transition cursor-pointer"
               >
-                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#18756B] text-white text-xs font-bold uppercase">
-                  {displayName?.[0] || "U"}
-                </div>
+                <UserAvatar src={displayImage} name={displayName} size="sm" />
                 <div className="text-left text-xs">
                   <div className="font-bold text-[#152C2B] leading-none">{displayName?.split(" ")[0]}</div>
                   <div className="text-[10px] text-[#526564] capitalize leading-tight mt-0.5">{role}</div>
@@ -186,20 +186,41 @@ export default function Navbar() {
           ))}
           <div className="pt-3 border-t border-[#DCE5DF]">
             {session ? (
-              <div className="space-y-2">
-                <Link
-                  href={`/dashboard/${role}`}
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="block rounded-xl bg-[#0B3638] px-3 py-2.5 text-sm font-bold text-white text-center"
-                >
-                  Go to {role.toUpperCase()} Dashboard
-                </Link>
-                <button
-                  onClick={handleSignOut}
-                  className="w-full text-center rounded-lg py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50"
-                >
-                  Sign Out
-                </button>
+              <div className="space-y-3">
+                <div className="flex items-center gap-3 p-2 rounded-xl bg-white border border-[#DCE5DF]">
+                  <UserAvatar src={displayImage} name={displayName} size="md" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-bold text-[#152C2B] truncate">{displayName || user?.name}</p>
+                    <p className="text-[10px] text-[#526564] truncate">{user?.email}</p>
+                    <span className="inline-block mt-0.5 text-[9px] font-bold uppercase tracking-wider text-[#18756B] bg-[#18756B]/10 px-2 py-0.5 rounded-full">
+                      {role}
+                    </span>
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Link
+                    href={`/dashboard/${role}`}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="block rounded-xl bg-[#0B3638] px-3 py-2.5 text-xs font-bold text-white text-center hover:bg-[#152C2B] transition"
+                  >
+                    Go to {role.toUpperCase()} Dashboard
+                  </Link>
+                  <Link
+                    href="/dashboard/profile"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center justify-center gap-1.5 rounded-xl border border-[#DCE5DF] bg-white px-3 py-2 text-xs font-bold text-[#152C2B] hover:bg-[#F6F5EF] transition"
+                  >
+                    <UserIcon className="h-3.5 w-3.5 text-[#18756B]" />
+                    <span>My Profile</span>
+                  </Link>
+                  <button
+                    onClick={handleSignOut}
+                    className="w-full flex items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 transition border border-rose-100"
+                  >
+                    <LogOut className="h-3.5 w-3.5" />
+                    <span>Sign Out</span>
+                  </button>
+                </div>
               </div>
             ) : (
               <div className="flex flex-col gap-2">
