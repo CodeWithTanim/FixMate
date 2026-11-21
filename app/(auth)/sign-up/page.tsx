@@ -12,11 +12,12 @@ function SignUpForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl");
+  const initialRole = searchParams.get("role") === "technician" ? "technician" : "customer";
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<"customer" | "technician">("customer");
+  const [role, setRole] = useState<"customer" | "technician">(initialRole);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
@@ -40,6 +41,11 @@ function SignUpForm() {
     setGoogleLoading(true);
     setErrorMsg("");
     try {
+      // Set intended role cookie so BetterAuth assigns this role upon Google callback
+      if (typeof document !== "undefined") {
+        document.cookie = `fixmate_intended_role=${role}; path=/; max-age=3600; SameSite=Lax`;
+      }
+
       const res = await authClient.signIn.social({
         provider: "google",
         callbackURL: getSafeRedirectUrl(callbackUrl, `/dashboard/${role}`),
@@ -114,8 +120,14 @@ function SignUpForm() {
   return (
     <div className="space-y-6">
       <div className="space-y-1 text-center">
-        <h2 className="text-xl font-bold tracking-tight text-slate-900">Create an Account</h2>
-        <p className="text-xs text-slate-500">Join FixMate to request repairs or provide expert services</p>
+        <h2 className="text-xl font-bold tracking-tight text-slate-900">
+          {role === "technician" ? "Join as Technician" : "Create an Account"}
+        </h2>
+        <p className="text-xs text-slate-500">
+          {role === "technician"
+            ? "Register your repair business and start receiving service jobs"
+            : "Sign up to request verified device & appliance repairs"}
+        </p>
       </div>
 
       {errorMsg && (
@@ -224,7 +236,7 @@ function SignUpForm() {
               <span>Creating account...</span>
             </>
           ) : (
-            <span>Create Account</span>
+            <span>Create {role === "technician" ? "Technician" : "Customer"} Account</span>
           )}
         </button>
       </form>
@@ -266,16 +278,16 @@ function SignUpForm() {
             />
           </svg>
         )}
-        <span>Sign up with Google</span>
+        <span>Sign up with Google ({role === "technician" ? "Technician" : "Customer"})</span>
       </button>
 
       <div className="text-center text-xs text-[#526564] pt-2 border-t border-[#DCE5DF]">
         Already have an account?{" "}
         <Link
-          href={callbackUrl ? `/sign-in?callbackUrl=${encodeURIComponent(callbackUrl)}` : "/sign-in"}
+          href={`/sign-in?role=${role}${callbackUrl ? `&callbackUrl=${encodeURIComponent(callbackUrl)}` : ""}`}
           className="font-bold text-[#18756B] hover:text-[#135d55]"
         >
-          Sign in
+          Sign in as {role}
         </Link>
       </div>
     </div>

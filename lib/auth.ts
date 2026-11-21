@@ -116,6 +116,31 @@ export const auth = betterAuth({
         }
       }
     }),
+    after: createAuthMiddleware(async (ctx) => {
+      // Synchronize role preference on Google/social callback
+      if (ctx.path.startsWith("/callback")) {
+        try {
+          const cookieHeader = ctx.headers?.get ? ctx.headers.get("cookie") : (ctx.headers as Record<string, string> | undefined)?.cookie;
+          if (cookieHeader) {
+            const match = cookieHeader.match(/fixmate_intended_role=([^;]+)/);
+            if (match && match[1]) {
+              const intendedRole = decodeURIComponent(match[1]).trim().toLowerCase();
+              if (intendedRole === "technician" || intendedRole === "customer") {
+                const session = (ctx.context as Record<string, unknown> | undefined)?.newSession as { user?: { _id?: unknown; id?: unknown; role?: string; email?: string } } | undefined;
+                const user = session?.user;
+                if (user && user.role !== "admin" && user.role !== intendedRole) {
+                  const filter = user.id ? { id: user.id } : { email: user.email };
+                  await mongoDb.collection("user").updateOne(filter, { $set: { role: intendedRole } });
+                  user.role = intendedRole;
+                }
+              }
+            }
+          }
+        } catch (err) {
+          console.warn("Could not sync intended role in oauth callback hook:", err);
+        }
+      }
+    }),
   },
   user: {
     additionalFields: {
@@ -141,9 +166,25 @@ export const auth = betterAuth({
   databaseHooks: {
     user: {
       create: {
-        before: async (user) => {
-          const requested = user as { role?: string };
-          const safeRole = requested.role === "technician" ? "technician" : "customer";
+        before: async (user, ctx) => {
+          let selectedRole = (user as { role?: string })?.role;
+          try {
+            const context = ctx as { headers?: { get?: (name: string) => string | null; cookie?: string } } | undefined;
+            const cookieHeader = context?.headers?.get ? context.headers.get("cookie") : context?.headers?.cookie;
+            if (cookieHeader) {
+              const match = cookieHeader.match(/fixmate_intended_role=([^;]+)/);
+              if (match && match[1]) {
+                const roleFromCookie = decodeURIComponent(match[1]).trim().toLowerCase();
+                if (roleFromCookie === "technician" || roleFromCookie === "customer") {
+                  selectedRole = roleFromCookie;
+                }
+              }
+            }
+          } catch (e) {
+            console.warn("Could not read fixmate_intended_role cookie in create hook:", e);
+          }
+
+          const safeRole = selectedRole === "technician" ? "technician" : "customer";
           return {
             data: {
               ...user,

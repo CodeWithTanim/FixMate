@@ -5,14 +5,16 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import toast from "react-hot-toast";
 import { authClient } from "@/lib/auth-client";
-import { Lock, Mail, Loader2 } from "lucide-react";
+import { Lock, Mail, Loader2, ShieldCheck, Wrench } from "lucide-react";
 import { getSafeRedirectUrl } from "@/lib/utils";
 
 function SignInForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl");
+  const initialRole = searchParams.get("role") === "technician" ? "technician" : "customer";
 
+  const [role, setRole] = useState<"customer" | "technician">(initialRole);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -38,9 +40,14 @@ function SignInForm() {
     setGoogleLoading(true);
     setErrorMsg("");
     try {
+      // Set intended role cookie so BetterAuth assigns or synchronizes the selected role upon Google return
+      if (typeof document !== "undefined") {
+        document.cookie = `fixmate_intended_role=${role}; path=/; max-age=3600; SameSite=Lax`;
+      }
+
       const res = await authClient.signIn.social({
         provider: "google",
-        callbackURL: getSafeRedirectUrl(callbackUrl, "/dashboard/customer"),
+        callbackURL: getSafeRedirectUrl(callbackUrl, `/dashboard/${role}`),
       });
       if (res?.error) {
         throw new Error(res.error.message || "Failed to initiate Google sign in.");
@@ -83,12 +90,16 @@ function SignInForm() {
 
       toast.success("Signed in successfully!", { id: toastId });
 
-      let defaultRoleUrl = "/dashboard/customer";
       const userRole = (res.data?.user as { role?: string })?.role;
-      if (userRole === "admin") defaultRoleUrl = "/dashboard/admin";
-      else if (userRole === "technician") defaultRoleUrl = "/dashboard/technician";
+      let targetRoleUrl = `/dashboard/${role}`;
+      if (userRole === "admin") {
+        targetRoleUrl = "/dashboard/admin";
+      } else if (userRole && userRole !== role) {
+        // Redirect to their registered portal if they selected another tab
+        targetRoleUrl = `/dashboard/${userRole}`;
+      }
 
-      const targetUrl = getSafeRedirectUrl(callbackUrl, defaultRoleUrl);
+      const targetUrl = getSafeRedirectUrl(callbackUrl, targetRoleUrl);
       router.push(targetUrl);
       router.refresh();
     } catch (err: unknown) {
@@ -102,8 +113,45 @@ function SignInForm() {
   return (
     <div className="space-y-6">
       <div className="space-y-1 text-center">
-        <h2 className="text-xl font-bold tracking-tight text-slate-900">Welcome Back</h2>
-        <p className="text-xs text-slate-500">Sign in to manage repair requests and bookings</p>
+        <h2 className="text-xl font-bold tracking-tight text-slate-900">
+          {role === "technician" ? "Technician Portal" : "Welcome Back"}
+        </h2>
+        <p className="text-xs text-slate-500">
+          {role === "technician"
+            ? "Sign in to manage service requests, jobs, and quotes"
+            : "Sign in to manage repair requests and bookings"}
+        </p>
+      </div>
+
+      {/* Two-Way Role Selection Tabs */}
+      <div className="space-y-1.5">
+        <label className="block text-xs font-semibold text-slate-700">Account Type</label>
+        <div className="grid grid-cols-2 gap-2 p-1 bg-[#F6F5EF] rounded-xl border border-[#DCE5DF]">
+          <button
+            type="button"
+            onClick={() => setRole("customer")}
+            className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-bold transition cursor-pointer ${
+              role === "customer"
+                ? "bg-white text-[#18756B] shadow-2xs border border-[#DCE5DF]"
+                : "text-[#526564] hover:text-[#152C2B]"
+            }`}
+          >
+            <ShieldCheck className="h-4 w-4" />
+            <span>Customer</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setRole("technician")}
+            className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-bold transition cursor-pointer ${
+              role === "technician"
+                ? "bg-white text-[#18756B] shadow-2xs border border-[#DCE5DF]"
+                : "text-[#526564] hover:text-[#152C2B]"
+            }`}
+          >
+            <Wrench className="h-4 w-4" />
+            <span>Technician</span>
+          </button>
+        </div>
       </div>
 
       {errorMsg && (
@@ -160,7 +208,7 @@ function SignInForm() {
               <span>Signing in...</span>
             </>
           ) : (
-            <span>Sign In</span>
+            <span>Sign In as {role === "technician" ? "Technician" : "Customer"}</span>
           )}
         </button>
       </form>
@@ -202,16 +250,16 @@ function SignInForm() {
             />
           </svg>
         )}
-        <span>Sign in with Google</span>
+        <span>Sign in with Google ({role === "technician" ? "Technician" : "Customer"})</span>
       </button>
 
       <div className="text-center text-xs text-[#526564] pt-2 border-t border-[#DCE5DF]">
         Don&apos;t have an account?{" "}
         <Link
-          href={callbackUrl ? `/sign-up?callbackUrl=${encodeURIComponent(callbackUrl)}` : "/sign-up"}
+          href={`/sign-up?role=${role}${callbackUrl ? `&callbackUrl=${encodeURIComponent(callbackUrl)}` : ""}`}
           className="font-bold text-[#18756B] hover:text-[#135d55]"
         >
-          Create an account
+          Create a {role} account
         </Link>
       </div>
     </div>
