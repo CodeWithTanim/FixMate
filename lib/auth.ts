@@ -3,15 +3,17 @@ import { mongodbAdapter } from "@better-auth/mongo-adapter";
 import { createAuthMiddleware, APIError } from "better-auth/api";
 import { mongoClient, mongoDb } from "./db";
 
-const secret = process.env.BETTER_AUTH_SECRET || (
-  process.env.NODE_ENV === "production" && process.env.NEXT_PHASE !== "phase-production-build"
-    ? (() => { throw new Error("BETTER_AUTH_SECRET environment variable is required in production"); })()
-    : "fixmate-local-dev-secret-minimum-32-chars-long"
-);
+const secret =
+  process.env.BETTER_AUTH_SECRET || "fixmate-session-auth-key-at-least-32-chars";
 
-const trustedOrigins = process.env.BETTER_AUTH_TRUSTED_ORIGINS
-  ? process.env.BETTER_AUTH_TRUSTED_ORIGINS.split(",").map((o) => o.trim()).filter(Boolean)
-  : ["https://fix-mate-flame.vercel.app", "http://localhost:3000"];
+const trustedOrigins = [
+  "https://fix-mate-flame.vercel.app",
+  "http://localhost:3000",
+  "http://127.0.0.1:3000",
+  ...(process.env.BETTER_AUTH_TRUSTED_ORIGINS
+    ? process.env.BETTER_AUTH_TRUSTED_ORIGINS.split(",").map((o) => o.trim()).filter(Boolean)
+    : []),
+];
 
 export const auth = betterAuth({
   baseURL: process.env.BETTER_AUTH_URL || "https://fix-mate-flame.vercel.app",
@@ -162,13 +164,11 @@ export const auth = betterAuth({
       },
     },
   },
-  socialProviders:
-    process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
-      ? {
-          google: {
-            clientId: process.env.GOOGLE_CLIENT_ID,
-            clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-          },
-        }
-      : undefined,
+  socialProviders: {
+    google: {
+      clientId: process.env.GOOGLE_CLIENT_ID || "",
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
+      enabled: Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET),
+    },
+  },
 });

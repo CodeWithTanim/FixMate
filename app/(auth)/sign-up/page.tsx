@@ -25,10 +25,16 @@ export default function SignUpPage() {
     setGoogleLoading(true);
     setErrorMsg("");
     try {
-      await authClient.signIn.social({
+      const res = await authClient.signIn.social({
         provider: "google",
         callbackURL: getSafeRedirectUrl(callbackUrl, `/dashboard/${role}`),
       });
+      if (res?.error) {
+        throw new Error(res.error.message || "Failed to initiate Google sign up.");
+      }
+      if (res?.data?.url && typeof window !== "undefined") {
+        window.location.href = res.data.url;
+      }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Failed to initiate Google sign up.";
       toast.error(message);

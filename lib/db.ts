@@ -1,6 +1,6 @@
 import { MongoClient, Db } from "mongodb";
 
-// Fallback to local MongoDB URI during static build if env var is not set yet in deployment settings
+// Resilient MongoDB connection
 const uri = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/fixmate-db";
 const dbName = process.env.MONGODB_DBNAME || "fixmate-db";
 
