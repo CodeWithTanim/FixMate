@@ -4,7 +4,7 @@ import { createAuthMiddleware, APIError } from "better-auth/api";
 import { mongoClient, mongoDb } from "./db";
 
 const secret =
-  process.env.BETTER_AUTH_SECRET || "fixmate-session-auth-key-at-least-32-chars";
+  process.env.BETTER_AUTH_SECRET || "mUNlQHnq42lbdvckTNnfLwbwH1kmh4D1";
 
 const trustedOrigins = [
   "https://fix-mate-flame.vercel.app",
@@ -113,31 +113,6 @@ export const auth = betterAuth({
             }
             body.image = body.image.trim();
           }
-        }
-      }
-    }),
-    after: createAuthMiddleware(async (ctx) => {
-      // Synchronize role preference on Google/social callback
-      if (ctx.path.startsWith("/callback")) {
-        try {
-          const cookieHeader = ctx.headers?.get ? ctx.headers.get("cookie") : (ctx.headers as Record<string, string> | undefined)?.cookie;
-          if (cookieHeader) {
-            const match = cookieHeader.match(/fixmate_intended_role=([^;]+)/);
-            if (match && match[1]) {
-              const intendedRole = decodeURIComponent(match[1]).trim().toLowerCase();
-              if (intendedRole === "technician" || intendedRole === "customer") {
-                const session = (ctx.context as Record<string, unknown> | undefined)?.newSession as { user?: { _id?: unknown; id?: unknown; role?: string; email?: string } } | undefined;
-                const user = session?.user;
-                if (user && user.role !== "admin" && user.role !== intendedRole) {
-                  const filter = user.id ? { id: user.id } : { email: user.email };
-                  await mongoDb.collection("user").updateOne(filter, { $set: { role: intendedRole } });
-                  user.role = intendedRole;
-                }
-              }
-            }
-          }
-        } catch (err) {
-          console.warn("Could not sync intended role in oauth callback hook:", err);
         }
       }
     }),

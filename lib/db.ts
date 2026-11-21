@@ -24,8 +24,5 @@ export const mongoDb = mongoClient.db(dbName);
 export default mongoClient;
 
 export async function getDatabase(): Promise<Db> {
-  if (!process.env.MONGODB_URI) {
-    throw new Error("MONGODB_URI environment variable is required");
-  }
   return mongoDb;
 }
