@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import toast from "react-hot-toast";
 import { authClient } from "@/lib/auth-client";
-import { Lock, Mail, Loader2, ShieldCheck, Wrench } from "lucide-react";
+import { Lock, Mail, Loader2, ShieldCheck, Wrench, Eye, EyeOff, KeyRound } from "lucide-react";
 import { getSafeRedirectUrl } from "@/lib/utils";
 
 function SignInForm() {
@@ -17,6 +17,7 @@ function SignInForm() {
   const [role, setRole] = useState<"customer" | "technician">(initialRole);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
@@ -40,7 +41,6 @@ function SignInForm() {
     setGoogleLoading(true);
     setErrorMsg("");
     try {
-      // Set intended role cookie so BetterAuth assigns or synchronizes the selected role upon Google return
       if (typeof document !== "undefined") {
         document.cookie = `fixmate_intended_role=${role}; path=/; max-age=3600; SameSite=Lax`;
       }
@@ -63,11 +63,31 @@ function SignInForm() {
     }
   };
 
+  const handleAutofill = (demoRole: "admin" | "customer" | "technician") => {
+    setErrorMsg("");
+    if (demoRole === "admin") {
+      setEmail("admin@fixmate.dev");
+      setPassword("Admin@Tanim2026");
+      setRole("customer");
+    } else if (demoRole === "customer") {
+      setEmail("customer@fixmate.dev");
+      setPassword("Password123");
+      setRole("customer");
+    } else if (demoRole === "technician") {
+      setEmail("rahim.tech@fixmate.dev");
+      setPassword("Password123");
+      setRole("technician");
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg("");
 
-    if (!email || !password) {
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanPassword = password.trim();
+
+    if (!cleanEmail || !cleanPassword) {
       setErrorMsg("Please enter both email and password.");
       return;
     }
@@ -77,13 +97,14 @@ function SignInForm() {
 
     try {
       const res = await authClient.signIn.email({
-        email: email.trim().toLowerCase(),
-        password,
+        email: cleanEmail,
+        password: cleanPassword,
       });
 
       if (res.error) {
-        toast.error(res.error.message || "Failed to sign in. Please check your credentials.", { id: toastId });
-        setErrorMsg(res.error.message || "Invalid email or password.");
+        const message = res.error.message || "Invalid email or password. Please check your credentials.";
+        toast.error(message, { id: toastId });
+        setErrorMsg(message);
         setLoading(false);
         return;
       }
@@ -95,7 +116,6 @@ function SignInForm() {
       if (userRole === "admin") {
         targetRoleUrl = "/dashboard/admin";
       } else if (userRole && userRole !== role) {
-        // Redirect to their registered portal if they selected another tab
         targetRoleUrl = `/dashboard/${userRole}`;
       }
 
@@ -154,6 +174,37 @@ function SignInForm() {
         </div>
       </div>
 
+      {/* Demo Quick Fill Helper */}
+      <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+        <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-600">
+          <KeyRound className="h-3.5 w-3.5 text-[#18756B]" />
+          <span>Quick Demo Autofill:</span>
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          <button
+            type="button"
+            onClick={() => handleAutofill("admin")}
+            className="rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-900 px-2.5 py-1 text-[11px] font-bold transition cursor-pointer"
+          >
+            Admin (Admin@Tanim2026)
+          </button>
+          <button
+            type="button"
+            onClick={() => handleAutofill("customer")}
+            className="rounded-lg bg-emerald-100 hover:bg-emerald-200 text-emerald-900 px-2.5 py-1 text-[11px] font-bold transition cursor-pointer"
+          >
+            Customer (Password123)
+          </button>
+          <button
+            type="button"
+            onClick={() => handleAutofill("technician")}
+            className="rounded-lg bg-blue-100 hover:bg-blue-200 text-blue-900 px-2.5 py-1 text-[11px] font-bold transition cursor-pointer"
+          >
+            Technician (Password123)
+          </button>
+        </div>
+      </div>
+
       {errorMsg && (
         <div className="rounded-lg bg-rose-50 p-3 text-xs font-medium text-rose-700 border border-rose-200">
           {errorMsg}
@@ -162,11 +213,11 @@ function SignInForm() {
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-xs font-semibold text-slate-700 mb-1" htmlFor="email">
+          <label className="block text-xs font-bold text-[#152C2B] mb-1" htmlFor="email">
             Email Address
           </label>
           <div className="relative">
-            <Mail className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+            <Mail className="absolute left-3 top-2.5 h-4 w-4 text-[#526564]" />
             <input
               id="email"
               type="email"
@@ -187,13 +238,21 @@ function SignInForm() {
             <Lock className="absolute left-3 top-2.5 h-4 w-4 text-[#526564]" />
             <input
               id="password"
-              type="password"
+              type={showPassword ? "text" : "password"}
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
-              className="w-full rounded-xl border border-[#DCE5DF] py-2.5 pl-9 pr-3 text-sm text-[#152C2B] placeholder:text-[#526564]/50 focus:border-[#18756B] focus:outline-none focus:ring-1 focus:ring-[#18756B]"
+              className="w-full rounded-xl border border-[#DCE5DF] py-2.5 pl-9 pr-10 text-sm text-[#152C2B] placeholder:text-[#526564]/50 focus:border-[#18756B] focus:outline-none focus:ring-1 focus:ring-[#18756B]"
             />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 transition"
+              aria-label={showPassword ? "Hide password" : "Show password"}
+            >
+              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
           </div>
         </div>
 

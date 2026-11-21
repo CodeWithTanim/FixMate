@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import toast from "react-hot-toast";
 import { authClient } from "@/lib/auth-client";
-import { User, Mail, Lock, Loader2, ShieldCheck, Wrench } from "lucide-react";
+import { Lock, Mail, User, Loader2, ShieldCheck, Wrench, Eye, EyeOff } from "lucide-react";
 import { getSafeRedirectUrl } from "@/lib/utils";
 
 function SignUpForm() {
@@ -14,10 +14,11 @@ function SignUpForm() {
   const callbackUrl = searchParams.get("callbackUrl");
   const initialRole = searchParams.get("role") === "technician" ? "technician" : "customer";
 
+  const [role, setRole] = useState<"customer" | "technician">(initialRole);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<"customer" | "technician">(initialRole);
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
@@ -41,7 +42,6 @@ function SignUpForm() {
     setGoogleLoading(true);
     setErrorMsg("");
     try {
-      // Set intended role cookie so BetterAuth assigns this role upon Google callback
       if (typeof document !== "undefined") {
         document.cookie = `fixmate_intended_role=${role}; path=/; max-age=3600; SameSite=Lax`;
       }
@@ -68,20 +68,24 @@ function SignUpForm() {
     e.preventDefault();
     setErrorMsg("");
 
-    if (!name.trim()) {
+    const cleanName = name.trim();
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanPassword = password.trim();
+
+    if (!cleanName) {
       setErrorMsg("Please enter your full name.");
       return;
     }
-    if (!email.trim()) {
+    if (!cleanEmail) {
       setErrorMsg("Please enter your email address.");
       return;
     }
-    if (password.length < 6) {
+    if (cleanPassword.length < 6) {
       setErrorMsg("Password must be at least 6 characters.");
       return;
     }
-    if (!/[A-Z]/.test(password) || !/[a-z]/.test(password)) {
-      setErrorMsg("Password must contain both uppercase and lowercase letters.");
+    if (!/[A-Z]/.test(cleanPassword) || !/[a-z]/.test(cleanPassword)) {
+      setErrorMsg("Password must contain both uppercase and lowercase letters (e.g. Password123).");
       return;
     }
 
@@ -90,15 +94,16 @@ function SignUpForm() {
 
     try {
       const res = await authClient.signUp.email({
-        name: name.trim(),
-        email: email.trim().toLowerCase(),
-        password,
+        name: cleanName,
+        email: cleanEmail,
+        password: cleanPassword,
         role,
       } as unknown as { name: string; email: string; password: string });
 
       if (res.error) {
-        toast.error(res.error.message || "Failed to create account. Please try again.", { id: toastId });
-        setErrorMsg(res.error.message || "Sign up failed.");
+        const errorText = res.error.message || (res.error as { statusText?: string })?.statusText || "Failed to create account. Please try again.";
+        toast.error(errorText, { id: toastId });
+        setErrorMsg(errorText);
         setLoading(false);
         return;
       }
@@ -130,13 +135,7 @@ function SignUpForm() {
         </p>
       </div>
 
-      {errorMsg && (
-        <div className="rounded-lg bg-rose-50 p-3 text-xs font-medium text-rose-700 border border-rose-200">
-          {errorMsg}
-        </div>
-      )}
-
-      {/* Role Selector Tabs */}
+      {/* Two-Way Role Selection Tabs */}
       <div className="space-y-1.5">
         <label className="block text-xs font-semibold text-slate-700">Account Type</label>
         <div className="grid grid-cols-2 gap-2 p-1 bg-[#F6F5EF] rounded-xl border border-[#DCE5DF]">
@@ -167,13 +166,19 @@ function SignUpForm() {
         </div>
       </div>
 
+      {errorMsg && (
+        <div className="rounded-lg bg-rose-50 p-3 text-xs font-medium text-rose-700 border border-rose-200">
+          {errorMsg}
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-xs font-semibold text-slate-700 mb-1" htmlFor="name">
+          <label className="block text-xs font-bold text-[#152C2B] mb-1" htmlFor="name">
             Full Name
           </label>
           <div className="relative">
-            <User className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+            <User className="absolute left-3 top-2.5 h-4 w-4 text-[#526564]" />
             <input
               id="name"
               type="text"
@@ -187,11 +192,11 @@ function SignUpForm() {
         </div>
 
         <div>
-          <label className="block text-xs font-semibold text-slate-700 mb-1" htmlFor="email">
+          <label className="block text-xs font-bold text-[#152C2B] mb-1" htmlFor="email">
             Email Address
           </label>
           <div className="relative">
-            <Mail className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+            <Mail className="absolute left-3 top-2.5 h-4 w-4 text-[#526564]" />
             <input
               id="email"
               type="email"
@@ -212,16 +217,24 @@ function SignUpForm() {
             <Lock className="absolute left-3 top-2.5 h-4 w-4 text-[#526564]" />
             <input
               id="password"
-              type="password"
+              type={showPassword ? "text" : "password"}
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="At least 6 chars (A-Z & a-z)"
-              className="w-full rounded-xl border border-[#DCE5DF] py-2.5 pl-9 pr-3 text-sm text-[#152C2B] placeholder:text-[#526564]/50 focus:border-[#18756B] focus:outline-none focus:ring-1 focus:ring-[#18756B]"
+              className="w-full rounded-xl border border-[#DCE5DF] py-2.5 pl-9 pr-10 text-sm text-[#152C2B] placeholder:text-[#526564]/50 focus:border-[#18756B] focus:outline-none focus:ring-1 focus:ring-[#18756B]"
             />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 transition"
+              aria-label={showPassword ? "Hide password" : "Show password"}
+            >
+              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
           </div>
           <p className="mt-1 text-[11px] text-[#526564]">
-            Must include at least 6 characters with uppercase and lowercase letters.
+            Must include at least 6 characters with uppercase and lowercase letters (e.g. Password123).
           </p>
         </div>
 
