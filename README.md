@@ -1,4 +1,4 @@
-# 🛠️ FixMate — On-Demand Repair Marketplace (Client)
+# 🛠️ FixMate - On-Demand Repair Marketplace (Client)
 
 <div align="center">
 
@@ -168,7 +168,6 @@ FixMate/
 │   ├── ServiceCard.tsx               # Service card with pricing, badges & ratings
 │   └── ui/                           # Primitives: buttons, dialogs, badges, inputs
 ├── lib/
-│   ├── __tests__/                    # Domain test suite (20 automated tests)
 │   ├── api/                          # Typed backend HTTP client
 │   ├── auth.ts                       # Better Auth server configuration
 │   ├── auth-client.ts                # Better Auth React client hooks
@@ -192,19 +191,15 @@ FixMate/
 | **Authorization** | Short-lived HS256 JWTs via [jose](https://github.com/panva/jose) |
 | **Payments** | [Stripe](https://stripe.com/) Checkout Sessions & Customer Invoicing |
 | **Feedback & UX** | `react-hot-toast`, accessible dialog focus traps |
-| **Testing** | Node.js Native Test Runner (`node --test`) |
 
 ---
 
-## 🧪 Testing & Verification
+## 💎 Code Quality & Production Build
 
-The client includes an extensive domain unit testing suite verifying business logic, role guards, input sanitization, and state transitions:
+The client codebase is strictly typed and validated against production standards:
 
 ```bash
-# Run domain test suite (20 tests)
-npm run test
-
-# Run TypeScript typecheck (0 errors)
+# Run TypeScript static typecheck (0 errors)
 npm run typecheck
 
 # Run ESLint validation
@@ -213,15 +208,6 @@ npm run lint
 # Build production bundle (28/28 routes verified)
 npm run build
 ```
-
-### Test Suite Coverage Highlights
-- ✅ **Booking State Machine**: Validates legal status transitions and restricts illegal skips.
-- ✅ **Cancellation Boundaries**: Restricts customer cancellation strictly to the `requested` state.
-- ✅ **Duplicate Prevention**: Prevents concurrent active bookings for the same customer and service.
-- ✅ **Role Guards**: Verifies role boundaries preventing privilege escalation.
-- ✅ **Safe Redirects**: Blocks open redirect vulnerabilities, control character injections, and protocol-relative attacks.
-- ✅ **Date Normalization**: Guarantees calendar dates are rendered consistently without timezone date shifts.
-- ✅ **Financial Precision**: Validates USD minimum thresholds and 2-decimal cent rounding.
 
 ---
 
