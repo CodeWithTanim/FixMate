@@ -2,23 +2,18 @@ import { betterAuth } from "better-auth";
 import { mongodbAdapter } from "@better-auth/mongo-adapter";
 import { createAuthMiddleware, APIError } from "better-auth/api";
 import { mongoClient, mongoDb } from "./db";
+import { getAuthConfiguration } from "./auth-config";
 
-const secret =
-  process.env.BETTER_AUTH_SECRET || "mUNlQHnq42lbdvckTNnfLwbwH1kmh4D1";
-
-const trustedOrigins = [
-  "https://fix-mate-flame.vercel.app",
-  "http://localhost:3000",
-  "http://127.0.0.1:3000",
-  ...(process.env.BETTER_AUTH_TRUSTED_ORIGINS
-    ? process.env.BETTER_AUTH_TRUSTED_ORIGINS.split(",").map((o) => o.trim()).filter(Boolean)
-    : []),
-];
+const secret = process.env.BETTER_AUTH_SECRET;
+if (!secret) throw new Error("BETTER_AUTH_SECRET must be configured for authentication.");
+const configuration = getAuthConfiguration(process.env);
 
 export const auth = betterAuth({
-  baseURL: process.env.BETTER_AUTH_URL || "https://fix-mate-flame.vercel.app",
+  baseURL: configuration.baseURL,
   secret,
-  trustedOrigins,
+  trustedOrigins: configuration.trustedOrigins,
+  onAPIError: { errorURL: "/sign-in" },
+  advanced: { trustedProxyHeaders: process.env.VERCEL === "1" },
   database: mongodbAdapter(mongoDb, {
     client: mongoClient,
   }),
@@ -32,8 +27,8 @@ export const auth = betterAuth({
       if (ctx.path === "/sign-up/email") {
         const body = ctx.body as Record<string, unknown> | undefined;
         if (body) {
-          const password = body.password as string | undefined;
-          if (!password || password.length < 6 || !/[A-Z]/.test(password) || !/[a-z]/.test(password)) {
+          const password = body.password;
+          if (typeof password !== "string" || password.length < 6 || !/[A-Z]/.test(password) || !/[a-z]/.test(password)) {
             throw new APIError("BAD_REQUEST", {
               message: "Password must be at least 6 characters and contain at least one uppercase and one lowercase letter.",
             });
@@ -49,8 +44,8 @@ export const auth = betterAuth({
       if (ctx.path === "/change-password") {
         const body = ctx.body as Record<string, unknown> | undefined;
         if (body) {
-          const newPassword = body.newPassword as string | undefined;
-          if (!newPassword || newPassword.length < 6 || !/[A-Z]/.test(newPassword) || !/[a-z]/.test(newPassword)) {
+          const newPassword = body.newPassword;
+          if (typeof newPassword !== "string" || newPassword.length < 6 || !/[A-Z]/.test(newPassword) || !/[a-z]/.test(newPassword)) {
             throw new APIError("BAD_REQUEST", {
               message: "New password must be at least 6 characters and contain at least one uppercase and one lowercase letter.",
             });
@@ -144,9 +139,9 @@ export const auth = betterAuth({
         before: async (user, ctx) => {
           let selectedRole = (user as { role?: string })?.role;
           try {
-            const context = ctx as { headers?: { get?: (name: string) => string | null; cookie?: string } } | undefined;
+            const context = ctx as { path?: string; headers?: { get?: (name: string) => string | null; cookie?: string } } | undefined;
             const cookieHeader = context?.headers?.get ? context.headers.get("cookie") : context?.headers?.cookie;
-            if (cookieHeader) {
+            if (cookieHeader && context?.path?.startsWith("/callback/")) {
               const match = cookieHeader.match(/fixmate_intended_role=([^;]+)/);
               if (match && match[1]) {
                 const roleFromCookie = decodeURIComponent(match[1]).trim().toLowerCase();
@@ -155,8 +150,8 @@ export const auth = betterAuth({
                 }
               }
             }
-          } catch (e) {
-            console.warn("Could not read fixmate_intended_role cookie in create hook:", e);
+          } catch {
+            console.warn("Could not read the intended signup role.");
           }
 
           const safeRole = selectedRole === "technician" ? "technician" : "customer";
@@ -180,15 +175,10 @@ export const auth = betterAuth({
       },
     },
   },
-  socialProviders: {
+  socialProviders: configuration.googleConfigured ? {
     google: {
-      clientId:
-        process.env.GOOGLE_CLIENT_ID ||
-        ["355028805683", "i38mh2nmoi5ug3d7uahlk491odjejp3n." + ["apps", "googleusercontent", "com"].join(".")].join("-"),
-      clientSecret:
-        process.env.GOOGLE_CLIENT_SECRET ||
-        ["GOCSPX", "_xrAKdaifsCIQowzjXB_pUUmZoVh"].join("-"),
-      enabled: true,
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
     },
-  },
+  } : {},
 });

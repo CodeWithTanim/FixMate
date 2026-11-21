@@ -22,12 +22,20 @@ export default function DashboardLayoutClient({
   children: React.ReactNode;
 }) {
   const { data: session, isPending } = authClient.useSession();
-  const [currentUser, setCurrentUser] = useState<SafeDashboardUser | null>(initialUser);
+  const [signedOut, setSignedOut] = useState(false);
+  const sessionUser = session?.user as Record<string, unknown> | undefined;
+  const currentUser: SafeDashboardUser | null = signedOut ? null : sessionUser ? {
+    id: String(sessionUser.id || sessionUser._id || ""),
+    name: String(sessionUser.name || "Customer"),
+    email: String(sessionUser.email || ""),
+    role: String(sessionUser.role || "customer"),
+    image: typeof sessionUser.image === "string" ? sessionUser.image : null,
+  } : isPending ? initialUser : null;
 
   // Instantly eject on sign-out event
   useEffect(() => {
     const handleSignOut = () => {
-      setCurrentUser(null);
+      setSignedOut(true);
       if (typeof window !== "undefined") {
         window.location.replace("/sign-in");
       }
@@ -42,29 +50,11 @@ export default function DashboardLayoutClient({
   useEffect(() => {
     // If client session is resolved and user is not authenticated, instantly redirect to sign-in
     if (!isPending && !session?.user) {
-      setCurrentUser(null);
       if (typeof window !== "undefined") {
         window.location.replace("/sign-in");
       }
-      return;
     }
-
-    if (session?.user) {
-      const u = session.user as Record<string, unknown>;
-      setCurrentUser({
-        id: String(u.id || u._id || ""),
-        name: String(u.name || "Customer"),
-        email: String(u.email || ""),
-        role: String(u.role || "customer"),
-        image: typeof u.image === "string" ? u.image : null,
-      });
-      return;
-    }
-
-    if (initialUser) {
-      setCurrentUser(initialUser);
-    }
-  }, [initialUser, session, isPending]);
+  }, [session, isPending]);
 
   if (!currentUser) {
     return (

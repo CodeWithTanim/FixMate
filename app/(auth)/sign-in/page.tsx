@@ -7,6 +7,7 @@ import toast from "react-hot-toast";
 import { authClient } from "@/lib/auth-client";
 import { Lock, Mail, Loader2, ShieldCheck, Wrench, Eye, EyeOff, KeyRound } from "lucide-react";
 import { getSafeRedirectUrl } from "@/lib/utils";
+import { getAuthErrorMessage, getOAuthErrorMessage } from "@/lib/auth-errors";
 
 function SignInForm() {
   const router = useRouter();
@@ -20,7 +21,7 @@ function SignInForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [errorMsg, setErrorMsg] = useState("");
+  const [errorMsg, setErrorMsg] = useState(() => getOAuthErrorMessage(searchParams.get("error")));
 
   const { data: session, isPending } = authClient.useSession();
 
@@ -47,14 +48,18 @@ function SignInForm() {
 
       const res = await authClient.signIn.social({
         provider: "google",
-        callbackURL: getSafeRedirectUrl(callbackUrl, `/dashboard/${role}`),
+        callbackURL: getSafeRedirectUrl(callbackUrl, "/dashboard"),
+        errorCallbackURL: `/sign-in?role=${role}`,
+        disableRedirect: true,
       });
       if (res?.error) {
-        throw new Error(res.error.message || "Failed to initiate Google sign in.");
+        throw new Error(getAuthErrorMessage(res.error, "Failed to initiate Google sign in."));
       }
       if (res?.data?.url && typeof window !== "undefined") {
-        window.location.href = res.data.url;
+        window.location.assign(res.data.url);
+        return;
       }
+      throw new Error("Google sign-in could not be started. Please try again.");
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Failed to initiate Google sign in.";
       toast.error(message);
@@ -85,7 +90,7 @@ function SignInForm() {
     setErrorMsg("");
 
     const cleanEmail = email.trim().toLowerCase();
-    const cleanPassword = password.trim();
+    const cleanPassword = password;
 
     if (!cleanEmail || !cleanPassword) {
       setErrorMsg("Please enter both email and password.");
@@ -102,7 +107,7 @@ function SignInForm() {
       });
 
       if (res.error) {
-        const message = res.error.message || "Invalid email or password. Please check your credentials.";
+        const message = getAuthErrorMessage(res.error, "Invalid email or password. Please check your credentials.");
         toast.error(message, { id: toastId });
         setErrorMsg(message);
         setLoading(false);
@@ -112,18 +117,7 @@ function SignInForm() {
       toast.success("Signed in successfully!", { id: toastId });
 
       const userRole = (res.data?.user as { role?: string })?.role;
-      let targetRoleUrl = `/dashboard/${role}`;
-      if (userRole === "admin") {
-        targetRoleUrl = "/dashboard/admin";
-      } else if (userRole && userRole !== role) {
-        // User is logging in under a different portal tab; switch active role seamlessly
-        await fetch("/api/auth/switch-role", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ role }),
-        }).catch(() => {});
-        targetRoleUrl = `/dashboard/${role}`;
-      }
+      const targetRoleUrl = `/dashboard/${userRole || "customer"}`;
 
       const targetUrl = getSafeRedirectUrl(callbackUrl, targetRoleUrl);
       router.push(targetUrl);

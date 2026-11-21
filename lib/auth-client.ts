@@ -1,7 +1,8 @@
 import { createAuthClient } from "better-auth/react";
 
 export const authClient = createAuthClient({
-  baseURL: process.env.NEXT_PUBLIC_BETTER_AUTH_URL || (typeof window !== "undefined" ? window.location.origin : "https://fix-mate-flame.vercel.app"),
+  // Auth cookies and API requests must belong to the page the user is visiting.
+  baseURL: typeof window !== "undefined" ? window.location.origin : undefined,
 });
 
 export const { signIn, signUp, signOut, useSession } = authClient;

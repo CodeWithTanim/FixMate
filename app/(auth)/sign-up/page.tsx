@@ -7,6 +7,7 @@ import toast from "react-hot-toast";
 import { authClient } from "@/lib/auth-client";
 import { Lock, Mail, User, Loader2, ShieldCheck, Wrench, Eye, EyeOff } from "lucide-react";
 import { getSafeRedirectUrl } from "@/lib/utils";
+import { getAuthErrorMessage, getOAuthErrorMessage } from "@/lib/auth-errors";
 
 function SignUpForm() {
   const router = useRouter();
@@ -21,7 +22,7 @@ function SignUpForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [errorMsg, setErrorMsg] = useState("");
+  const [errorMsg, setErrorMsg] = useState(() => getOAuthErrorMessage(searchParams.get("error")));
 
   const { data: session, isPending } = authClient.useSession();
 
@@ -48,14 +49,18 @@ function SignUpForm() {
 
       const res = await authClient.signIn.social({
         provider: "google",
-        callbackURL: getSafeRedirectUrl(callbackUrl, `/dashboard/${role}`),
+        callbackURL: getSafeRedirectUrl(callbackUrl, "/dashboard"),
+        errorCallbackURL: `/sign-up?role=${role}`,
+        disableRedirect: true,
       });
       if (res?.error) {
-        throw new Error(res.error.message || "Failed to initiate Google sign up.");
+        throw new Error(getAuthErrorMessage(res.error, "Failed to initiate Google sign up."));
       }
       if (res?.data?.url && typeof window !== "undefined") {
-        window.location.href = res.data.url;
+        window.location.assign(res.data.url);
+        return;
       }
+      throw new Error("Google sign-up could not be started. Please try again.");
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Failed to initiate Google sign up.";
       toast.error(message);
@@ -70,7 +75,7 @@ function SignUpForm() {
 
     const cleanName = name.trim();
     const cleanEmail = email.trim().toLowerCase();
-    const cleanPassword = password.trim();
+    const cleanPassword = password;
 
     if (!cleanName) {
       setErrorMsg("Please enter your full name.");
@@ -101,34 +106,7 @@ function SignUpForm() {
       } as unknown as { name: string; email: string; password: string });
 
       if (res.error) {
-        const errMsg = String(res.error.message || "").toLowerCase();
-        const errCode = String((res.error as { code?: string })?.code || "");
-        const isDuplicate = errMsg.includes("already exists") || errCode === "USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL";
-
-        if (isDuplicate) {
-          // Existing account found with this email; authenticate and switch active role
-          const loginRes = await authClient.signIn.email({
-            email: cleanEmail,
-            password: cleanPassword,
-          });
-
-          if (!loginRes.error) {
-            await fetch("/api/auth/switch-role", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ role }),
-            }).catch(() => {});
-
-            toast.success(`Welcome to your ${role} portal!`, { id: toastId });
-            const defaultRoleUrl = role === "technician" ? "/dashboard/technician" : "/dashboard/customer";
-            const targetUrl = getSafeRedirectUrl(callbackUrl, defaultRoleUrl);
-            router.push(targetUrl);
-            router.refresh();
-            return;
-          }
-        }
-
-        const errorText = res.error.message || (res.error as { statusText?: string })?.statusText || "Failed to create account. Please try again.";
+        const errorText = getAuthErrorMessage(res.error, "Failed to create account. Please try again.");
         toast.error(errorText, { id: toastId });
         setErrorMsg(errorText);
         setLoading(false);

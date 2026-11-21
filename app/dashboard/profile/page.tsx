@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { apiClient } from "@/lib/api/client";
 import { authClient } from "@/lib/auth-client";
+import ConnectedAccounts from "@/components/ConnectedAccounts";
 import toast from "react-hot-toast";
 
 interface UserProfile {
@@ -451,6 +452,8 @@ export default function ProfilePage() {
           </div>
         </div>
       </form>
+
+      <ConnectedAccounts />
 
       {/* Security & Password Change Card */}
       <div className="rounded-2xl border border-[#DCE5DF] bg-white p-6 shadow-2xs space-y-4">
