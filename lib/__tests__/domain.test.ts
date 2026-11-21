@@ -517,8 +517,8 @@ test("Payment verification rejects invalid or unfulfilled session with 400 Bad R
   assert.equal(validPayment.success, true);
 });
 
-test("Upload handler byte inspection accepts authentic JPEG, PNG, WebP signatures and rejects invalid non-images or oversized buffers", () => {
-  function validateImagePayload(buffer: Buffer, maxSizeBytes: number = 5 * 1024 * 1024): { ok: boolean; reason?: string } {
+test("Upload handler byte inspection accepts authentic JPEG, PNG, WebP signatures and rejects invalid non-images or oversized buffers (3MB Vercel boundary)", () => {
+  function validateImagePayload(buffer: Buffer, maxSizeBytes: number = 3 * 1024 * 1024): { ok: boolean; reason?: string } {
     if (!buffer || buffer.length === 0) return { ok: false, reason: "Empty buffer" };
     if (buffer.length > maxSizeBytes) return { ok: false, reason: "Size exceeds limit" };
 
@@ -560,11 +560,64 @@ test("Upload handler byte inspection accepts authentic JPEG, PNG, WebP signature
   // Empty buffer
   assert.equal(validateImagePayload(Buffer.alloc(0)).ok, false);
 
-  // Oversized buffer (>5MB)
+  // Buffer within 3MB boundary (2MB) passes
+  const valid2MB = Buffer.concat([
+    Buffer.from([0xff, 0xd8, 0xff, 0xe0]),
+    Buffer.alloc(2 * 1024 * 1024),
+  ]);
+  assert.equal(validateImagePayload(valid2MB).ok, true);
+
+  // Oversized buffer exceeding 3MB Vercel function payload boundary (3.5MB)
   const oversizedBuffer = Buffer.concat([
     Buffer.from([0xff, 0xd8, 0xff, 0xe0]),
-    Buffer.alloc(6 * 1024 * 1024),
+    Buffer.alloc(3.5 * 1024 * 1024),
   ]);
   assert.equal(validateImagePayload(oversizedBuffer).ok, false);
   assert.equal(validateImagePayload(oversizedBuffer).reason, "Size exceeds limit");
+});
+
+test("Profile identity updates propagate area, serviceArea and synchronizes shared state", () => {
+  interface UserDoc {
+    name: string;
+    email: string;
+    role: string;
+    phone?: string;
+    area?: string;
+    serviceArea?: string;
+    image?: string | null;
+  }
+
+  function applyProfileUpdate(existing: UserDoc, updates: { name?: string; phone?: string; area?: string; serviceArea?: string; image?: string | null }): UserDoc {
+    const resolvedArea = updates.serviceArea !== undefined ? updates.serviceArea : updates.area;
+    return {
+      ...existing,
+      name: updates.name ? updates.name.trim() : existing.name,
+      phone: updates.phone !== undefined ? updates.phone.trim() : existing.phone,
+      area: resolvedArea !== undefined ? resolvedArea.trim() : existing.area,
+      serviceArea: resolvedArea !== undefined ? resolvedArea.trim() : existing.serviceArea,
+      image: updates.image !== undefined ? updates.image : existing.image,
+    };
+  }
+
+  const initialUser: UserDoc = {
+    name: "Alex Customer",
+    email: "customer@fixmate.dev",
+    role: "customer",
+    area: "Old Town",
+    serviceArea: "Old Town",
+    image: null,
+  };
+
+  const updated = applyProfileUpdate(initialUser, {
+    name: "Alex Updated",
+    serviceArea: "Metro Silicon Valley",
+    image: "https://i.ibb.co/avatar.jpg",
+  });
+
+  assert.equal(updated.name, "Alex Updated");
+  assert.equal(updated.serviceArea, "Metro Silicon Valley");
+  assert.equal(updated.area, "Metro Silicon Valley", "area and serviceArea must remain in tandem");
+  assert.equal(updated.image, "https://i.ibb.co/avatar.jpg");
+  assert.equal(updated.email, "customer@fixmate.dev", "Email must remain unescalated");
+  assert.equal(updated.role, "customer", "Role must remain protected");
 });

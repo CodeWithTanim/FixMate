@@ -43,8 +43,8 @@ export default function AddServicePage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("Image file size must be under 5MB");
+    if (file.size > 3 * 1024 * 1024) {
+      toast.error("Image file size must be under 3MB (Vercel payload compatibility)");
       return;
     }
 
@@ -288,7 +288,7 @@ export default function AddServicePage() {
                 ) : (
                   <>
                     <Upload className="h-4 w-4" />
-                    <span>Choose photo from device (JPEG, PNG, WebP up to 5MB)</span>
+                    <span>Choose photo from device (JPEG, PNG, WebP up to 3MB)</span>
                   </>
                 )}
               </label>

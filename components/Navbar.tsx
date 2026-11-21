@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Wrench, Menu, X, LogOut, LayoutDashboard, ChevronDown } from "lucide-react";
@@ -11,11 +11,30 @@ import type { UserProfile } from "@/types";
 export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [profileOverride, setProfileOverride] = useState<{ name?: string; image?: string | null } | null>(null);
   const pathname = usePathname();
   const router = useRouter();
   const { data: session, isPending } = authClient.useSession();
 
+  useEffect(() => {
+    const handleProfileUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent<{ name?: string; image?: string | null }>;
+      if (customEvent.detail) {
+        setProfileOverride({
+          name: customEvent.detail.name,
+          image: customEvent.detail.image,
+        });
+      }
+    };
+
+    window.addEventListener("fixmate:profile-updated", handleProfileUpdate);
+    return () => {
+      window.removeEventListener("fixmate:profile-updated", handleProfileUpdate);
+    };
+  }, []);
+
   const user = session?.user as unknown as UserProfile | undefined;
+  const displayName = profileOverride?.name || user?.name;
   const role = user?.role || "customer";
 
   const navLinks = [
@@ -71,10 +90,10 @@ export default function Navbar() {
                 className="flex items-center gap-2.5 rounded-xl border border-[#DCE5DF] bg-white px-3 py-1.5 shadow-2xs hover:bg-[#F6F5EF] transition cursor-pointer"
               >
                 <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#18756B] text-white text-xs font-bold uppercase">
-                  {user?.name?.[0] || "U"}
+                  {displayName?.[0] || "U"}
                 </div>
                 <div className="text-left text-xs">
-                  <div className="font-bold text-[#152C2B] leading-none">{user?.name?.split(" ")[0]}</div>
+                  <div className="font-bold text-[#152C2B] leading-none">{displayName?.split(" ")[0]}</div>
                   <div className="text-[10px] text-[#526564] capitalize leading-tight mt-0.5">{role}</div>
                 </div>
                 <ChevronDown className="h-3.5 w-3.5 text-[#526564]" />
@@ -83,7 +102,7 @@ export default function Navbar() {
               {dropdownOpen && (
                 <div className="absolute right-0 mt-2 w-48 rounded-xl border border-[#DCE5DF] bg-white py-1.5 shadow-lg z-50">
                   <div className="px-3 py-2 border-b border-[#DCE5DF]/60">
-                    <p className="text-xs font-bold text-[#152C2B] truncate">{user?.name}</p>
+                    <p className="text-xs font-bold text-[#152C2B] truncate">{displayName || user?.name}</p>
                     <p className="text-[10px] text-[#526564] truncate">{user?.email}</p>
                   </div>
                   <Link

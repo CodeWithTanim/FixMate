@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -34,8 +34,26 @@ interface DashboardSidebarProps {
 
 export default function DashboardSidebar({ user }: DashboardSidebarProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [profileOverride, setProfileOverride] = useState<{ name?: string; image?: string | null } | null>(null);
   const pathname = usePathname();
   const router = useRouter();
+
+  useEffect(() => {
+    const handleProfileUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent<{ name?: string; image?: string | null }>;
+      if (customEvent.detail) {
+        setProfileOverride({
+          name: customEvent.detail.name,
+          image: customEvent.detail.image,
+        });
+      }
+    };
+
+    window.addEventListener("fixmate:profile-updated", handleProfileUpdate);
+    return () => {
+      window.removeEventListener("fixmate:profile-updated", handleProfileUpdate);
+    };
+  }, []);
 
   const handleSignOut = async () => {
     await authClient.signOut();
@@ -43,6 +61,8 @@ export default function DashboardSidebar({ user }: DashboardSidebarProps) {
     router.refresh();
   };
 
+  const displayName = profileOverride?.name || user.name;
+  const displayImage = profileOverride?.image !== undefined ? profileOverride.image : user.image;
   const role = user.role || "customer";
 
   const getNavLinks = () => {
@@ -143,20 +163,20 @@ export default function DashboardSidebar({ user }: DashboardSidebarProps) {
       {/* User profile & sign out at bottom */}
       <div className="p-4 border-t border-white/10 bg-black/10">
         <div className="flex items-center gap-3 mb-3 px-2">
-          {user.image ? (
+          {displayImage ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={user.image}
-              alt={user.name}
+              src={displayImage}
+              alt={displayName}
               className="h-9 w-9 rounded-full object-cover border border-[#18756B]"
             />
           ) : (
             <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#18756B] font-bold text-white text-xs">
-              {user.name.charAt(0).toUpperCase()}
+              {displayName.charAt(0).toUpperCase()}
             </div>
           )}
           <div className="flex-1 min-w-0">
-            <div className="text-xs font-bold text-white truncate">{user.name}</div>
+            <div className="text-xs font-bold text-white truncate">{displayName}</div>
             <div className="text-[10px] text-white/60 truncate">{user.email}</div>
           </div>
         </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   User,
   Mail,
@@ -13,6 +14,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { apiClient } from "@/lib/api/client";
+import { authClient } from "@/lib/auth-client";
 import toast from "react-hot-toast";
 
 interface UserProfile {
@@ -27,6 +29,7 @@ interface UserProfile {
 }
 
 export default function ProfilePage() {
+  const router = useRouter();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -75,8 +78,8 @@ export default function ProfilePage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("Image file size must be under 5MB");
+    if (file.size > 3 * 1024 * 1024) {
+      toast.error("Image file size must be under 3MB (Vercel payload compatibility)");
       return;
     }
 
@@ -121,6 +124,23 @@ export default function ProfilePage() {
       });
 
       setProfile(res.user);
+
+      // Refresh shared Better Auth session user identity and server layout
+      try {
+        await authClient.updateUser({
+          name: name.trim(),
+          image: image.trim() || undefined,
+        });
+      } catch (err: unknown) {
+        console.warn("Session user sync notice:", err);
+      }
+
+      // Dispatch custom window event so layout and navbar client components update immediately
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("fixmate:profile-updated", { detail: res.user }));
+      }
+
+      router.refresh();
       toast.success("Profile updated successfully!");
     } catch (err: unknown) {
       const error = err as { message?: string };

@@ -165,30 +165,21 @@ export default function TechnicianDashboard() {
                 <div
                   className="h-full rounded-full bg-emerald-500 transition-all duration-500"
                   style={{
-                    width: `${Math.max(
-                      5,
-                      Math.round(((stats.completed || 0) / stats.totalRequests) * 100)
-                    )}%`,
+                    width: `${(stats.completed || 0) > 0 ? Math.max(5, Math.round(((stats.completed || 0) / stats.totalRequests) * 100)) : 0}%`,
                   }}
                   title={`Completed: ${stats.completed}`}
                 />
                 <div
                   className="h-full rounded-full bg-indigo-500 transition-all duration-500 ml-0.5"
                   style={{
-                    width: `${Math.max(
-                      5,
-                      Math.round(((stats.inProgress || 0) / stats.totalRequests) * 100)
-                    )}%`,
+                    width: `${(stats.inProgress || 0) > 0 ? Math.max(5, Math.round(((stats.inProgress || 0) / stats.totalRequests) * 100)) : 0}%`,
                   }}
                   title={`In Progress: ${stats.inProgress}`}
                 />
                 <div
                   className="h-full rounded-full bg-amber-400 transition-all duration-500 ml-0.5"
                   style={{
-                    width: `${Math.max(
-                      5,
-                      Math.round(((stats.pendingRequests || 0) / stats.totalRequests) * 100)
-                    )}%`,
+                    width: `${(stats.pendingRequests || 0) > 0 ? Math.max(5, Math.round(((stats.pendingRequests || 0) / stats.totalRequests) * 100)) : 0}%`,
                   }}
                   title={`Pending: ${stats.pendingRequests}`}
                 />

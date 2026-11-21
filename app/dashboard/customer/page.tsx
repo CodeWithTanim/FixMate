@@ -148,20 +148,14 @@ export default function CustomerDashboard() {
                 <div
                   className="h-full rounded-full bg-emerald-500 transition-all duration-500"
                   style={{
-                    width: `${Math.max(
-                      5,
-                      Math.round(((stats.completedBookings || 0) / stats.totalBookings) * 100)
-                    )}%`,
+                    width: `${(stats.completedBookings || 0) > 0 ? Math.max(5, Math.round(((stats.completedBookings || 0) / stats.totalBookings) * 100)) : 0}%`,
                   }}
                   title={`Completed: ${stats.completedBookings}`}
                 />
                 <div
                   className="h-full rounded-full bg-amber-400 transition-all duration-500 ml-0.5"
                   style={{
-                    width: `${Math.max(
-                      5,
-                      Math.round(((stats.activeBookings || 0) / stats.totalBookings) * 100)
-                    )}%`,
+                    width: `${(stats.activeBookings || 0) > 0 ? Math.max(5, Math.round(((stats.activeBookings || 0) / stats.totalBookings) * 100)) : 0}%`,
                   }}
                   title={`Active: ${stats.activeBookings}`}
                 />
