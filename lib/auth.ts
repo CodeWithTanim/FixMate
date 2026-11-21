@@ -43,12 +43,61 @@ export const auth = betterAuth({
         }
       }
 
-      // Prevent role or email escalation in user update
+      // Prevent role or email escalation in user update & enforce strict profile validation
       if (ctx.path === "/update-user") {
         const body = ctx.body as Record<string, unknown> | undefined;
         if (body) {
           delete body.role;
           delete body.email;
+          delete body.id;
+          delete body._id;
+
+          if (body.name !== undefined) {
+            if (typeof body.name !== "string" || body.name.trim().length < 2 || body.name.trim().length > 70) {
+              throw new APIError("BAD_REQUEST", {
+                message: "Name must be a valid string between 2 and 70 characters.",
+              });
+            }
+            body.name = body.name.trim();
+          }
+
+          if (body.phone !== undefined && body.phone !== null && body.phone !== "") {
+            if (typeof body.phone !== "string" || body.phone.trim().length < 7 || body.phone.trim().length > 30) {
+              throw new APIError("BAD_REQUEST", {
+                message: "Phone number must be between 7 and 30 characters.",
+              });
+            }
+            body.phone = body.phone.trim();
+          }
+
+          const areaVal = body.area !== undefined ? body.area : body.serviceArea;
+          if (areaVal !== undefined && areaVal !== null && areaVal !== "") {
+            if (typeof areaVal !== "string" || areaVal.trim().length < 2 || areaVal.trim().length > 100) {
+              throw new APIError("BAD_REQUEST", {
+                message: "Area must be between 2 and 100 characters.",
+              });
+            }
+            body.area = (areaVal as string).trim();
+            body.serviceArea = (areaVal as string).trim();
+          }
+
+          if (body.bio !== undefined && body.bio !== null && body.bio !== "") {
+            if (typeof body.bio !== "string" || body.bio.trim().length > 500) {
+              throw new APIError("BAD_REQUEST", {
+                message: "Bio cannot exceed 500 characters.",
+              });
+            }
+            body.bio = body.bio.trim();
+          }
+
+          if (body.image !== undefined && body.image !== null && body.image !== "") {
+            if (typeof body.image !== "string" || !/^https?:\/\/.+/.test(body.image.trim())) {
+              throw new APIError("BAD_REQUEST", {
+                message: "Image must be a valid URL string or empty.",
+              });
+            }
+            body.image = body.image.trim();
+          }
         }
       }
     }),

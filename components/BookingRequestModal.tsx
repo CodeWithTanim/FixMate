@@ -23,8 +23,13 @@ export default function BookingRequestModal({
   const [errorMsg, setErrorMsg] = useState("");
   const router = useRouter();
 
-  // Today in YYYY-MM-DD
-  const today = new Date().toISOString().split("T")[0];
+  // Today in YYYY-MM-DD in explicit Asia/Dhaka service timezone
+  const today = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Dhaka",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -652,3 +652,55 @@ test("API token manager binds token to active session and discards in-flight tok
   assert.equal(resolved, null, "In-flight token from previous session must be discarded");
   assert.equal(memoryToken, null, "Memory token must not be repopulated after logout");
 });
+
+test("validateMoneyAmount strictly enforces USD gateway limits and decimal precision", async () => {
+  const { validateMoneyAmount } = await import("../../../FixMate-Server/index.js");
+
+  // Valid amounts
+  assert.equal(validateMoneyAmount(50).valid, true);
+  assert.equal(validateMoneyAmount("50.25").valid, true);
+  assert.equal(validateMoneyAmount(0.50).valid, true);
+  assert.equal(validateMoneyAmount("0.50").valid, true);
+  assert.equal(validateMoneyAmount(99.99).valid, true);
+
+  // Invalid amounts
+  assert.equal(validateMoneyAmount("50junk").valid, false);
+  assert.equal(validateMoneyAmount(0.001).valid, false);
+  assert.equal(validateMoneyAmount(0.49).valid, false);
+  assert.equal(validateMoneyAmount(Infinity).valid, false);
+  assert.equal(validateMoneyAmount(-10).valid, false);
+  assert.equal(validateMoneyAmount(NaN).valid, false);
+  assert.equal(validateMoneyAmount(10.001).valid, false);
+  assert.equal(validateMoneyAmount({}).valid, false);
+  assert.equal(validateMoneyAmount(null).valid, false);
+  assert.equal(validateMoneyAmount(undefined).valid, false);
+});
+
+test("parseAndValidateCalendarDate validates YYYY-MM-DD format and rejects impossible dates or past days in Asia/Dhaka", async () => {
+  const { parseAndValidateCalendarDate, getTodayCalendarDate } = await import("../../../FixMate-Server/index.js");
+
+  const todayStr = getTodayCalendarDate("Asia/Dhaka");
+  assert.match(todayStr, /^\d{4}-\d{2}-\d{2}$/);
+
+  // Today in Dhaka must be valid
+  const todayValidation = parseAndValidateCalendarDate(todayStr, "Asia/Dhaka");
+  assert.equal(todayValidation.valid, true);
+
+  // Yesterday must be rejected
+  const yesterday = new Date(Date.now() - 86400000);
+  const yesterdayStr = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Dhaka",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(yesterday);
+  const yesterdayValidation = parseAndValidateCalendarDate(yesterdayStr, "Asia/Dhaka");
+  assert.equal(yesterdayValidation.valid, false);
+
+  // Impossible calendar dates must be rejected
+  assert.equal(parseAndValidateCalendarDate("2026-02-30", "Asia/Dhaka").valid, false);
+  assert.equal(parseAndValidateCalendarDate("2026-04-31", "Asia/Dhaka").valid, false);
+  assert.equal(parseAndValidateCalendarDate("2026-13-01", "Asia/Dhaka").valid, false);
+  assert.equal(parseAndValidateCalendarDate("invalid-date", "Asia/Dhaka").valid, false);
+  assert.equal(parseAndValidateCalendarDate(12345 as unknown as string, "Asia/Dhaka").valid, false);
+});
