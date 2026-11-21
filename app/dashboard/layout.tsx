@@ -1,6 +1,6 @@
 import { headers } from "next/headers";
 import { ObjectId } from "mongodb";
-import { auth } from "@/lib/auth";
+import { getAuth } from "@/lib/auth";
 import { mongoDb } from "@/lib/db";
 import DashboardLayoutClient, { SafeDashboardUser } from "@/components/DashboardLayoutClient";
 
@@ -15,7 +15,7 @@ export default async function DashboardLayout({
 
   try {
     const reqHeaders = await headers();
-    const session = await auth.api.getSession({
+    const session = await (await getAuth()).api.getSession({
       headers: reqHeaders,
     });
 

@@ -1,14 +1,15 @@
 import { betterAuth } from "better-auth";
 import { mongodbAdapter } from "@better-auth/mongo-adapter";
 import { createAuthMiddleware, APIError } from "better-auth/api";
-import { mongoClient, mongoDb } from "./db";
+import { getDatabase, mongoClient, mongoDb } from "./db";
 import { getAuthConfiguration } from "./auth-config";
 
 const secret = process.env.BETTER_AUTH_SECRET;
 if (!secret) throw new Error("BETTER_AUTH_SECRET must be configured for authentication.");
 const configuration = getAuthConfiguration(process.env);
 
-export const auth = betterAuth({
+function createAuth() {
+  return betterAuth({
   baseURL: configuration.baseURL,
   secret,
   trustedOrigins: configuration.trustedOrigins,
@@ -181,4 +182,24 @@ export const auth = betterAuth({
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
     },
   } : {},
-});
+  });
+}
+
+let authPromise: Promise<ReturnType<typeof createAuth>> | undefined;
+
+export async function getAuth() {
+  // Never initialize the adapter's background index builds on an unconnected
+  // client. Reconnect before every request so failed cold starts can recover.
+  await getDatabase();
+  if (!authPromise) {
+    authPromise = (async () => {
+      const instance = createAuth();
+      await instance.$context;
+      return instance;
+    })().catch(error => {
+      authPromise = undefined;
+      throw error;
+    });
+  }
+  return authPromise;
+}

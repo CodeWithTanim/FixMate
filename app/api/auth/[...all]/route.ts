@@ -1,11 +1,15 @@
-import { auth } from "@/lib/auth";
+import { getAuth } from "@/lib/auth";
 import { toNextJsHandler } from "better-auth/next-js";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+export const maxDuration = 60;
 
-const handlers = toNextJsHandler(auth);
+const handlers = toNextJsHandler(async (request: Request) => {
+  const auth = await getAuth();
+  return auth.handler(request);
+});
 
 function withAuthErrors(handler: (request: Request) => Promise<Response>) {
   return async (request: Request) => {

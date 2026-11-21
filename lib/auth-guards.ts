@@ -1,11 +1,11 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { auth } from "@/lib/auth";
+import { getAuth } from "@/lib/auth";
 import type { UserRole, UserProfile } from "@/types";
 
 export async function requireAuth(): Promise<UserProfile> {
   const reqHeaders = await headers();
-  const session = await auth.api.getSession({
+  const session = await (await getAuth()).api.getSession({
     headers: reqHeaders,
   });
 

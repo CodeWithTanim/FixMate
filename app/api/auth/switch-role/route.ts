@@ -1,7 +1,7 @@
 import { headers } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { ObjectId } from "mongodb";
-import { auth } from "@/lib/auth";
+import { getAuth } from "@/lib/auth";
 import { mongoDb } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 export async function POST(req: NextRequest) {
   try {
     const reqHeaders = await headers();
-    const session = await auth.api.getSession({
+    const session = await (await getAuth()).api.getSession({
       headers: reqHeaders,
     });
 

@@ -4,7 +4,7 @@ import { getServiceById } from "@/lib/api/services";
 import { MapPin, Clock, ShieldCheck, Tag, ArrowLeft, CheckCircle2, AlertCircle, Wrench, Crown } from "lucide-react";
 import BookingRequestModal from "@/components/BookingRequestModal";
 import ServiceReviewsList from "@/components/ServiceReviewsList";
-import { auth } from "@/lib/auth";
+import { getAuth } from "@/lib/auth";
 import { headers } from "next/headers";
 import type { UserProfile } from "@/types";
 
@@ -43,7 +43,7 @@ export default async function ServiceDetailsPage(props: {
 
   // Check current user session for role-aware request flow
   const reqHeaders = await headers();
-  const session = await auth.api.getSession({
+  const session = await (await getAuth()).api.getSession({
     headers: reqHeaders,
   });
 

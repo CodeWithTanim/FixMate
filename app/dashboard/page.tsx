@@ -1,6 +1,6 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { auth } from "@/lib/auth";
+import { getAuth } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -8,7 +8,7 @@ export default async function DashboardIndex() {
   let session = null;
   try {
     const reqHeaders = await headers();
-    session = await auth.api.getSession({
+    session = await (await getAuth()).api.getSession({
       headers: reqHeaders,
     });
   } catch (err: unknown) {
