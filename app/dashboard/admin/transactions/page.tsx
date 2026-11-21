@@ -34,12 +34,15 @@ export default function AdminTransactionsPage() {
   const [payments, setPayments] = useState<Transaction[]>([]);
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     let active = true;
     const fetchPayments = async () => {
       try {
+        setErrorMsg(null);
         const res = await apiClient.get<{
           data: Transaction[];
           totalRevenue: number;
@@ -52,6 +55,7 @@ export default function AdminTransactionsPage() {
       } catch (err: unknown) {
         if (active) {
           const error = err as { message?: string };
+          setErrorMsg(error.message || "Failed to load transactions ledger");
           toast.error(error.message || "Failed to load transactions ledger");
         }
       } finally {
@@ -65,14 +69,24 @@ export default function AdminTransactionsPage() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [refreshKey]);
 
   const filteredPayments = payments.filter((p) => {
+    const q = search.toLowerCase().trim();
+    if (!q) return true;
+    const txId = (p.stripePaymentIntentId || p.id || p._id || "").toLowerCase();
+    const sessionId = (p.stripeSessionId || "").toLowerCase();
+    const customer = (p.customerEmail || "").toLowerCase() + " " + (p.customerName || "").toLowerCase();
+    const tech = (p.technicianEmail || "").toLowerCase() + " " + (p.technicianName || "").toLowerCase();
+    const title = (p.serviceTitle || "").toLowerCase();
+    const booking = (p.bookingId || "").toLowerCase();
     return (
-      p.serviceTitle.toLowerCase().includes(search.toLowerCase()) ||
-      p.customerEmail.toLowerCase().includes(search.toLowerCase()) ||
-      p.technicianEmail.toLowerCase().includes(search.toLowerCase()) ||
-      (p.stripeSessionId && p.stripeSessionId.toLowerCase().includes(search.toLowerCase()))
+      title.includes(q) ||
+      customer.includes(q) ||
+      tech.includes(q) ||
+      txId.includes(q) ||
+      sessionId.includes(q) ||
+      booking.includes(q)
     );
   });
 
@@ -104,11 +118,27 @@ export default function AdminTransactionsPage() {
         <div className="flex items-center gap-2 bg-white/10 px-4 py-3 rounded-xl border border-white/10">
           <ShieldCheck className="h-5 w-5 text-[#F4B740]" />
           <div className="text-xs">
-            <div className="font-bold text-white">Stripe Webhook Verified</div>
-            <div className="text-[10px] text-white/60">Zero unconfirmed entries</div>
+            <div className="font-bold text-white">Stripe Test Mode</div>
+            <div className="text-[10px] text-white/60">Verified settled ledger</div>
           </div>
         </div>
       </div>
+
+      {/* Error State */}
+      {errorMsg && (
+        <div className="rounded-2xl border border-rose-200 bg-rose-50 p-6 text-center space-y-3">
+          <p className="text-xs font-bold text-rose-800">{errorMsg}</p>
+          <button
+            onClick={() => {
+              setLoading(true);
+              setRefreshKey((k) => k + 1);
+            }}
+            className="rounded-xl bg-rose-600 px-4 py-2 text-xs font-bold text-white hover:bg-rose-700 transition cursor-pointer"
+          >
+            Retry Loading Transactions
+          </button>
+        </div>
+      )}
 
       {/* Search Filter */}
       <div className="flex items-center justify-between gap-4 border-b border-[#DCE5DF] pb-4">

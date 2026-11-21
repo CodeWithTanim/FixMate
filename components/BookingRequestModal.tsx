@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { X, Calendar, MapPin, Phone, FileText, Loader2, Wrench } from "lucide-react";
@@ -30,6 +30,17 @@ export default function BookingRequestModal({
     month: "2-digit",
     day: "2-digit",
   }).format(new Date());
+
+  useEffect(() => {
+    if (!open) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !loading) {
+        setOpen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [open, loading]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -95,11 +106,26 @@ export default function BookingRequestModal({
       </button>
 
       {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs overflow-y-auto">
-          <div className="relative w-full max-w-lg rounded-3xl border border-[#DCE5DF] bg-white p-6 sm:p-8 shadow-2xl my-8">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs overflow-y-auto"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="booking-modal-title"
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !loading) {
+              setOpen(false);
+            }
+          }}
+        >
+          <div
+            className="relative w-full max-w-lg rounded-3xl border border-[#DCE5DF] bg-white p-6 sm:p-8 shadow-2xl my-8"
+            onClick={(e) => e.stopPropagation()}
+          >
             <button
+              type="button"
               onClick={() => setOpen(false)}
               className="absolute right-5 top-5 rounded-lg p-1.5 text-[#526564] hover:bg-[#F6F5EF] cursor-pointer"
+              aria-label="Close booking modal"
             >
               <X className="h-5 w-5" />
             </button>
@@ -108,9 +134,9 @@ export default function BookingRequestModal({
               <span className="text-[10px] uppercase font-bold text-[#18756B] tracking-wider">
                 Repair Booking Request
               </span>
-              <h2 className="text-xl font-bold text-[#152C2B]">{service.title}</h2>
+              <h2 id="booking-modal-title" className="text-xl font-bold text-[#152C2B]">{service.title}</h2>
               <p className="text-xs text-[#526564]">
-                Base Price: <strong className="text-[#152C2B]">${service.basePrice}</strong> • {service.serviceMode}
+                Base Price: <strong className="text-[#152C2B]">${service.basePrice.toFixed(2)}</strong> • {service.serviceMode}
               </p>
             </div>
 

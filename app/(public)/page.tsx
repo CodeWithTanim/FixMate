@@ -108,11 +108,11 @@ export default async function HomePage() {
                       </div>
                       <div>
                         <div className="text-xs font-bold">FixMate Diagnostic Station</div>
-                        <div className="text-[10px] text-slate-300">Active Job Inspection</div>
+                        <div className="text-[10px] text-slate-300">Workbench Order Overview</div>
                       </div>
                     </div>
-                    <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-semibold text-emerald-300 border border-emerald-500/30">
-                      Demonstration Lifecycle
+                    <span className="rounded-full bg-emerald-500/20 px-2.5 py-0.5 text-[10px] font-semibold text-emerald-300 border border-emerald-500/30">
+                      Example Repair Order (Demonstration)
                     </span>
                   </div>
 

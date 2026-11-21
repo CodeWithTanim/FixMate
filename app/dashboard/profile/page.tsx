@@ -230,11 +230,12 @@ export default function ProfilePage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Full Name */}
             <div>
-              <label className="text-xs font-bold text-[#152C2B] flex items-center gap-1.5 mb-1">
+              <label htmlFor="profile-name" className="text-xs font-bold text-[#152C2B] flex items-center gap-1.5 mb-1">
                 <User className="h-3.5 w-3.5 text-[#18756B]" />
                 <span>Full Name *</span>
               </label>
               <input
+                id="profile-name"
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -245,11 +246,12 @@ export default function ProfilePage() {
 
             {/* Email Address (Read-only) */}
             <div>
-              <label className="text-xs font-bold text-[#526564] flex items-center gap-1.5 mb-1">
+              <label htmlFor="profile-email" className="text-xs font-bold text-[#526564] flex items-center gap-1.5 mb-1">
                 <Mail className="h-3.5 w-3.5 text-slate-400" />
                 <span>Email Address (Protected)</span>
               </label>
               <input
+                id="profile-email"
                 type="email"
                 value={profile?.email || ""}
                 disabled
@@ -259,11 +261,12 @@ export default function ProfilePage() {
 
             {/* Contact Phone */}
             <div>
-              <label className="text-xs font-bold text-[#152C2B] flex items-center gap-1.5 mb-1">
+              <label htmlFor="profile-phone" className="text-xs font-bold text-[#152C2B] flex items-center gap-1.5 mb-1">
                 <Phone className="h-3.5 w-3.5 text-[#18756B]" />
                 <span>Phone Number</span>
               </label>
               <input
+                id="profile-phone"
                 type="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
@@ -274,11 +277,12 @@ export default function ProfilePage() {
 
             {/* Service Area */}
             <div>
-              <label className="text-xs font-bold text-[#152C2B] flex items-center gap-1.5 mb-1">
+              <label htmlFor="profile-area" className="text-xs font-bold text-[#152C2B] flex items-center gap-1.5 mb-1">
                 <MapPin className="h-3.5 w-3.5 text-[#18756B]" />
                 <span>City / Operating Area</span>
               </label>
               <input
+                id="profile-area"
                 type="text"
                 value={serviceArea}
                 onChange={(e) => setServiceArea(e.target.value)}
@@ -290,11 +294,12 @@ export default function ProfilePage() {
 
           {/* Bio / Description */}
           <div>
-            <label className="text-xs font-bold text-[#152C2B] flex items-center gap-1.5 mb-1">
+            <label htmlFor="profile-bio" className="text-xs font-bold text-[#152C2B] flex items-center gap-1.5 mb-1">
               <FileText className="h-3.5 w-3.5 text-[#18756B]" />
               <span>Bio / Experience Summary</span>
             </label>
             <textarea
+              id="profile-bio"
               value={bio}
               onChange={(e) => setBio(e.target.value)}
               placeholder="Tell customers about your background, specializations, or repair philosophy..."
@@ -304,10 +309,11 @@ export default function ProfilePage() {
 
           {/* Photo URL fallback */}
           <div>
-            <label className="text-xs font-bold text-[#526564] block mb-1">
+            <label htmlFor="profile-image-url" className="text-xs font-bold text-[#526564] block mb-1">
               Direct Photo URL (Optional)
             </label>
             <input
+              id="profile-image-url"
               type="url"
               value={image}
               onChange={(e) => setImage(e.target.value)}
