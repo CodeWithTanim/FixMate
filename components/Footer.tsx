@@ -34,9 +34,6 @@ export default function Footer() {
             <p className="text-xs text-[#DCE5DF]/80 leading-relaxed">
               Transparent, reliable on-demand repair services. Connect with local technicians for smartphones, computers, and home appliances.
             </p>
-            <div className="text-[11px] text-[#F4B740] font-semibold">
-              Payment only upon verified job completion.
-            </div>
 
             {/* Social Links with X icon */}
             <div className="pt-2 flex items-center gap-3">
@@ -93,24 +90,24 @@ export default function Footer() {
             </ul>
           </div>
 
-          {/* Contact & Support Block per PDF pp.7/13 */}
+          {/* Contact & Support Block */}
           <div>
             <h3 className="text-xs font-bold uppercase tracking-wider text-[#F4B740]">Contact & Support</h3>
             <ul className="mt-4 space-y-3 text-xs text-[#DCE5DF]">
               <li className="flex items-start gap-2.5">
                 <Mail className="h-4 w-4 text-[#F4B740] shrink-0 mt-0.5" />
                 <div>
-                  <a href="mailto:support@fixmate.local" className="hover:text-white transition font-mono">
-                    support@fixmate.local
+                  <a href="mailto:support@fixmate.dev" className="hover:text-white transition font-mono">
+                    support@fixmate.dev
                   </a>
-                  <p className="text-[10px] text-[#DCE5DF]/60">(Demo Support Desk)</p>
+                  <p className="text-[10px] text-[#DCE5DF]/60">Customer Support Desk</p>
                 </div>
               </li>
               <li className="flex items-start gap-2.5">
                 <Phone className="h-4 w-4 text-[#F4B740] shrink-0 mt-0.5" />
                 <div>
                   <span className="font-mono">+880 1700-000000</span>
-                  <p className="text-[10px] text-[#DCE5DF]/60">(Demo Hotline)</p>
+                  <p className="text-[10px] text-[#DCE5DF]/60">Customer Helpline</p>
                 </div>
               </li>
               <li className="flex items-start gap-2.5">
@@ -132,7 +129,7 @@ export default function Footer() {
         </div>
 
         <div className="mt-12 border-t border-[#DCE5DF]/10 pt-6 flex flex-col md:flex-row items-center justify-between text-[11px] text-[#DCE5DF]/60">
-          <p>&copy; {new Date().getFullYear()} FixMate. All rights reserved. Demo platform for on-demand repairs.</p>
+          <p>&copy; {new Date().getFullYear()} FixMate. All rights reserved.</p>
           <div className="flex gap-6 mt-3 md:mt-0">
             <Link href="/terms" className="hover:text-white transition">Terms of Service</Link>
             <Link href="/privacy" className="hover:text-white transition">Privacy Notice</Link>
