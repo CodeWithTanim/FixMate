@@ -56,13 +56,11 @@ export default function Navbar() {
 
   const handleSignOut = async () => {
     try {
-      await signOutUser();
       setDropdownOpen(false);
-      toast.success("Signed out successfully");
-      router.push("/");
-      router.refresh();
+      setMobileMenuOpen(false);
+      await signOutUser("/sign-in");
     } catch {
-      toast.error("Failed to complete sign out");
+      window.location.replace("/sign-in");
     }
   };
 

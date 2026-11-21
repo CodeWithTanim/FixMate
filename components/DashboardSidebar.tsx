@@ -67,12 +67,9 @@ export default function DashboardSidebar({ user }: DashboardSidebarProps) {
 
   const handleSignOut = async () => {
     try {
-      await signOutUser();
-      toast.success("Signed out successfully");
-      router.push("/");
-      router.refresh();
+      await signOutUser("/sign-in");
     } catch {
-      toast.error("Failed to complete sign out");
+      window.location.replace("/sign-in");
     }
   };
 

@@ -24,29 +24,45 @@ export default function DashboardLayoutClient({
   const { data: session, isPending } = authClient.useSession();
   const [currentUser, setCurrentUser] = useState<SafeDashboardUser | null>(initialUser);
 
+  // Instantly eject on sign-out event
   useEffect(() => {
-    if (initialUser) {
-      setCurrentUser(initialUser);
+    const handleSignOut = () => {
+      setCurrentUser(null);
+      if (typeof window !== "undefined") {
+        window.location.replace("/sign-in");
+      }
+    };
+
+    window.addEventListener("fixmate:sign-out", handleSignOut);
+    return () => {
+      window.removeEventListener("fixmate:sign-out", handleSignOut);
+    };
+  }, []);
+
+  useEffect(() => {
+    // If client session is resolved and user is not authenticated, instantly redirect to sign-in
+    if (!isPending && !session?.user) {
+      setCurrentUser(null);
+      if (typeof window !== "undefined") {
+        window.location.replace("/sign-in");
+      }
       return;
     }
 
-    if (!isPending) {
-      if (session?.user) {
-        const u = session.user as Record<string, unknown>;
-        setCurrentUser({
-          id: String(u.id || u._id || ""),
-          name: String(u.name || "Customer"),
-          email: String(u.email || ""),
-          role: String(u.role || "customer"),
-          image: typeof u.image === "string" ? u.image : null,
-        });
-      } else {
-        // If neither SSR nor client session exists, redirect to sign-in cleanly
-        if (typeof window !== "undefined") {
-          const target = encodeURIComponent(window.location.pathname + window.location.search);
-          window.location.replace(`/sign-in?callbackUrl=${target}`);
-        }
-      }
+    if (session?.user) {
+      const u = session.user as Record<string, unknown>;
+      setCurrentUser({
+        id: String(u.id || u._id || ""),
+        name: String(u.name || "Customer"),
+        email: String(u.email || ""),
+        role: String(u.role || "customer"),
+        image: typeof u.image === "string" ? u.image : null,
+      });
+      return;
+    }
+
+    if (initialUser) {
+      setCurrentUser(initialUser);
     }
   }, [initialUser, session, isPending]);
 
@@ -56,8 +72,8 @@ export default function DashboardLayoutClient({
         <div className="flex flex-col items-center gap-4 bg-white p-8 rounded-3xl border border-[#DCE5DF] shadow-xs max-w-sm w-full text-center">
           <Loader2 className="h-8 w-8 animate-spin text-[#18756B]" />
           <div>
-            <h2 className="text-sm font-bold text-[#152C2B]">Verifying FixMate Session</h2>
-            <p className="text-xs text-[#526564] mt-1">Connecting your profile and dashboard services...</p>
+            <h2 className="text-sm font-bold text-[#152C2B]">Redirecting to Sign In...</h2>
+            <p className="text-xs text-[#526564] mt-1">Please sign in to access FixMate dashboards.</p>
           </div>
         </div>
       </div>

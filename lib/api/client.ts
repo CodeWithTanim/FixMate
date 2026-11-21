@@ -30,14 +30,21 @@ if (typeof window !== "undefined") {
   });
 }
 
-export async function signOutUser() {
+export async function signOutUser(redirectPath: string = "/sign-in") {
   clearApiToken();
+  if (typeof document !== "undefined") {
+    document.cookie = "fixmate_intended_role=; path=/; max-age=0";
+  }
   if (typeof window !== "undefined") {
     window.dispatchEvent(new CustomEvent("fixmate:sign-out"));
   }
-  const res = await authClient.signOut();
-  if (res?.error) {
-    throw new Error(res.error.message || "Sign-out failed");
+  try {
+    await authClient.signOut();
+  } catch (err) {
+    console.warn("Sign-out network error:", err);
+  }
+  if (typeof window !== "undefined") {
+    window.location.replace(redirectPath);
   }
 }
 
