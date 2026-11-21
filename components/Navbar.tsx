@@ -53,12 +53,13 @@ export default function Navbar() {
   ];
 
   const handleSignOut = async () => {
+    const destination = role === "admin" ? "/admin" : "/sign-in";
     try {
       setDropdownOpen(false);
       setMobileMenuOpen(false);
-      await signOutUser("/sign-in");
+      await signOutUser(destination);
     } catch {
-      window.location.replace("/sign-in");
+      window.location.replace(destination);
     }
   };
 

@@ -21,13 +21,7 @@ function scopeAdapter<T extends DBTransactionAdapter>(adapter: T): T {
         if (!userEmail && !providerIdentity) return method.call(target, query);
         const role = await getAccountRole();
         const roleField = userEmail ? "role" : "accountRole";
-        const result = await method.call(target, { ...query, where: [...where, { field: roleField, value: role, connector: "AND" }] });
-        // Admin identities remain reserved; they cannot be shadowed by signup
-        // into a public role and do not need a public admin registration option.
-        if (userEmail && property === "findOne" && !result && role !== "admin") {
-          return method.call(target, { ...query, where: [...where, { field: "role", value: "admin", connector: "AND" }] });
-        }
-        return result;
+        return method.call(target, { ...query, where: [...where, { field: roleField, value: role, connector: "AND" }] });
       };
     },
   });

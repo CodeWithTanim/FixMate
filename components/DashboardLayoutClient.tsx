@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
 import DashboardSidebar from "@/components/DashboardSidebar";
 import DashboardHeader from "@/components/DashboardHeader";
@@ -22,8 +23,10 @@ export default function DashboardLayoutClient({
   children: React.ReactNode;
 }) {
   const { data: session, isPending } = authClient.useSession();
+  const pathname = usePathname();
   const [signedOut, setSignedOut] = useState(false);
   const sessionUser = session?.user as Record<string, unknown> | undefined;
+  const signInPath = (sessionUser?.role || initialUser?.role) === "admin" || pathname === "/dashboard/admin" || pathname.startsWith("/dashboard/admin/") ? "/admin" : "/sign-in";
   const currentUser: SafeDashboardUser | null = signedOut ? null : sessionUser ? {
     id: String(sessionUser.id || sessionUser._id || ""),
     name: String(sessionUser.name || "Customer"),
@@ -36,9 +39,6 @@ export default function DashboardLayoutClient({
   useEffect(() => {
     const handleSignOut = () => {
       setSignedOut(true);
-      if (typeof window !== "undefined") {
-        window.location.replace("/sign-in");
-      }
     };
 
     window.addEventListener("fixmate:sign-out", handleSignOut);
@@ -51,10 +51,10 @@ export default function DashboardLayoutClient({
     // If client session is resolved and user is not authenticated, instantly redirect to sign-in
     if (!isPending && !session?.user) {
       if (typeof window !== "undefined") {
-        window.location.replace("/sign-in");
+        window.location.replace(signInPath);
       }
     }
-  }, [session, isPending]);
+  }, [session, isPending, signInPath]);
 
   if (!currentUser) {
     return (

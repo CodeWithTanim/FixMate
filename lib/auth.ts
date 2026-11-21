@@ -170,6 +170,10 @@ function createAuth() {
       create: {
         before: async (user) => {
           const selectedRole = await getAccountRole();
+          const reservedAdmin = await mongoDb.collection("user").findOne({ email: user.email.toLowerCase(), role: "admin" }, { projection: { _id: 1 } });
+          if (reservedAdmin) {
+            throw new APIError("FORBIDDEN", { message: "This email is reserved for an administrator account." });
+          }
           const safeRole = selectedRole === "technician" ? "technician" : "customer";
           return {
             data: {

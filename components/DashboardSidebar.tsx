@@ -63,10 +63,11 @@ export default function DashboardSidebar({ user }: DashboardSidebarProps) {
   }, []);
 
   const handleSignOut = async () => {
+    const destination = user.role === "admin" ? "/admin" : "/sign-in";
     try {
-      await signOutUser("/sign-in");
+      await signOutUser(destination);
     } catch {
-      window.location.replace("/sign-in");
+      window.location.replace(destination);
     }
   };
 
